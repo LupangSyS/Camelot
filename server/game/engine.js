@@ -867,7 +867,7 @@ class Game {
   async declareVow(p) {
     const opts = [{ id: 'none', label: 'ไม่ประกาศ' }];
     if (this.alive().length > 1) opts.push({ id: 'valor', label: `⚔ ${VOWS.valor.name}` });
-    opts.push({ id: 'mercy', label: `🕊 ${VOWS.mercy.name}` });
+    if (this.alive().length > 2) opts.push({ id: 'mercy', label: `🕊 ${VOWS.mercy.name}` }); // ดวลตัวต่อตัวไม่มีที่ให้เมตตา
     if (p.hp > 1) opts.push({ id: 'tithe', label: `🩸 ${VOWS.tithe.name}` });
     const a = await this.ask(p, {
       type: 'option', kind: 'vow', title: 'รุ่งอรุณ: ประกาศสัตยาบันหรือพันธสัญญาหรือไม่?', options: opts, defaultOption: 'none',
@@ -1188,8 +1188,12 @@ class Game {
     await this.checkTrack();
   }
 
-  /** ความเร็วของสุริยุปราคา: เริ่มคืบรอบที่ 5 ทีละ 1, ตั้งแต่รอบ 16 ทีละ 2, ตั้งแต่รอบ 24 ทีละ 3 */
-  eclipseRate() { return this.round < 5 ? 0 : this.round < 16 ? 1 : this.round < 24 ? 2 : 3; }
+  /** ความเร็วของสุริยุปราคา: เริ่มคืบรอบที่ 4 ทีละ 1, ตั้งแต่รอบ 12 ทีละ 2, ตั้งแต่รอบ 20 ทีละ 3 (หยุดเมื่อลัทธิเงามืดสิ้นชีพหมด) */
+  eclipseRate() {
+    // ลัทธิเงามืดถูกกำจัดหมด = ไม่มีผู้ประกอบพิธี สุริยุปราคาหยุดคืบคลาน
+    if (!this.players.some((p) => p.role === 'rebel' && p.alive)) return 0;
+    return this.round < 4 ? 0 : this.round < 12 ? 1 : this.round < 20 ? 2 : 3;
+  }
 
   async moveTrack(delta, why) {
     const before = this.track;
