@@ -9,18 +9,44 @@ const VALUE = { elixir: 9, dispel: 7, blessing: 7, aegis: 6, strike: 4, blood_du
 const value = (c) => (c ? VALUE[c.key] ?? 2 : 0);
 const pickRandom = (a) => a[Math.floor(Math.random() * a.length)];
 
+/** ลัทธิเงามืดที่ยังเหลืออยู่ (นับจากสัดส่วนบทบาทที่เปิดเผย ลบด้วยผู้ที่สิ้นชีพและเปิดบทบาทแล้ว) */
+function rebelsLeft(g) {
+  return g.players.filter((p) => p.role === 'rebel').length - g.players.filter((p) => !p.alive && p.role === 'rebel').length;
+}
+
+function traitorsLeft(g) {
+  return g.players.filter((p) => p.role === 'traitor' && p.alive).length;
+}
+
 function isEnemy(g, me, t) {
   if (!t || me === t) return false;
   const alive = g.alive().length;
   switch (me.role) {
     case 'lord':
-    case 'loyalist':
-      return t.role !== 'lord' && t.rebelScore > 0;
+    case 'loyalist': {
+      if (t.role === 'lord') return false;
+      if (t.rebelScore > 0) return true;
+      // ลัทธิเงามืดหมดแล้ว: ถ้าจำนวนผู้ต้องสงสัยเท่ากับผู้แฝงตัวที่เหลือ ก็รู้ได้ทันทีว่าเป็นใคร
+      if (rebelsLeft(g) === 0) {
+        const suspects = g.alive().filter((q) => q.role !== 'lord' && q !== me);
+        if (suspects.length > 0 && suspects.length <= traitorsLeft(g)) return true;
+      }
+      return false;
+    }
     case 'rebel':
       return t.role === 'lord' || t.rebelScore < 0;
     case 'traitor':
+      // ผู้แฝงตัว: ปกป้องกษัตริย์จนเหลือดวลกันสองคน → กำจัดลัทธิเงามืดก่อน แล้วค่อยหันดาบใส่อัศวิน
       if (alive <= 2) return true;
-      return t.role !== 'lord' && t.rebelScore > 0;
+      if (t.role === 'lord') return false;
+      // ลัทธิเงามืดหมดแล้ว: ยังแกล้งภักดีต่อ และลอบสังหารอัศวินเฉพาะเมื่อได้เปรียบ (เลือดน้อยจนปิดได้ หรือเลือดเราสูงกว่า)
+      if (rebelsLeft(g) === 0) return t.hp <= 2 || t.hp < me.hp || t.rebelScore > 0;
+      {
+        // รักษาสมดุล: ช่วยกษัตริย์เฉพาะเมื่อพระองค์ตกอยู่ในอันตราย และเล็งเฉพาะลัทธิเงามืดที่เผยตัวชัดเจน
+        const lord = g.players.find((q) => q.role === 'lord');
+        const danger = lord && lord.hp <= Math.ceil(lord.maxHp / 2);
+        return t.rebelScore > (danger ? 0 : 2);
+      }
     default:
       return false;
   }
@@ -32,7 +58,8 @@ function isFriend(g, me, t) {
   switch (me.role) {
     case 'lord':
     case 'loyalist':
-      return t.role === 'lord' || t.rebelScore < 0;
+      // เมื่อลัทธิเงามืดหมดแล้ว ผู้แฝงตัวยังซ่อนอยู่ในหมู่อัศวิน — ไว้ใจได้เพียงกษัตริย์เท่านั้น
+      return t.role === 'lord' || (t.rebelScore < 0 && rebelsLeft(g) > 0);
     case 'rebel':
       return t.role !== 'lord' && t.rebelScore > 1;
     case 'traitor':
@@ -54,11 +81,15 @@ function vowAllows(g, p, t) {
 /** เลือกศัตรูที่ดีที่สุดจากรายการที่นั่ง; ถ้าไม่มีศัตรูที่รู้ อาจสุ่มโจมตี (กันเกมไม่คืบ) */
 function chooseEnemies(g, me, seats, max = 1, aggressive = true) {
   const ps = seats.map((s) => g.players[s]).filter((t) => vowAllows(g, me, t));
-  let en = ps.filter((t) => isEnemy(g, me, t)).sort((a, b) => a.hp - b.hp);
+  // เป้าหมายหลักของลัทธิเงามืดคือกษัตริย์ — เว้นแต่ปิดชีพอัศวินได้ในการโจมตีเดียว
+  const prio = (t) => (me.role === 'rebel' && t.role === 'lord' ? -10 : 0) + (t.hp <= 1 ? -20 : 0) + t.hp;
+  let en = ps.filter((t) => isEnemy(g, me, t)).sort((a, b) => prio(a) - prio(b));
   if (!en.length && aggressive) {
     const neutral = ps.filter((t) => !isFriend(g, me, t));
     // ยิ่งความมืดใกล้กลืนคาเมลอต ฝ่ายกษัตริย์ยิ่งต้องเสี่ยงโจมตี
-    const urgency = me.role === 'rebel' ? 0.7 : Math.min(0.85, 0.35 + Math.max(0, -g.track) * 0.06);
+    // ยิ่งความมืดใกล้กลืนคาเมลอต (หรือเหลือแต่ผู้แฝงตัวซ่อนอยู่) ฝ่ายกษัตริย์ยิ่งต้องเสี่ยงโจมตี
+    const endgame = rebelsLeft(g) === 0 ? 0.35 : 0;
+    const urgency = me.role === 'rebel' ? 0.7 : me.role === 'traitor' ? 0.35 : Math.min(0.9, 0.35 + endgame + Math.max(0, -g.track) * 0.06);
     if (neutral.length && Math.random() < urgency) en = [pickRandom(neutral)];
   }
   return en.slice(0, max).map((t) => t.seat);
@@ -73,7 +104,10 @@ function zoneScore(g, p, zone, wantAttack) {
   const old = p.zone;
   p.zone = zone;
   let s = 0;
+  // ไม่รู้ว่าใครเป็นศัตรู แต่ต้องกดดัน (ช่วงท้ายเกม): เข้าใกล้ผู้ต้องสงสัยที่ไม่ใช่มิตร
+  const hunt = wantAttack && (rebelsLeft(g) === 0 || g.track <= -4 || g.alive().length <= 3);
   for (const q of g.others(p)) {
+    if (hunt && !isEnemy(g, p, q) && !isFriend(g, p, q) && g.inAttackRange(p, q)) s += 0.7;
     if (isEnemy(g, p, q)) {
       if (wantAttack && g.inAttackRange(p, q)) s += 2;
       if (g.inAttackRange(q, p)) s -= p.hp <= 2 ? 2 : 0.6;
@@ -211,14 +245,17 @@ function play(g, p, req) {
   const spare = hand.length > p.hp || cheapest(hand, 2).every((c) => value(c) <= 3);
   if (ritual && p.role === 'rebel' && (p.hp >= 3 || g.track <= -7)) {
     const revealed = p.rebelScore > 2;
-    if (Math.random() < (g.track <= -6 ? 0.9 : revealed ? 0.4 : 0.15)) {
+    if (Math.random() < (g.track <= -6 ? 0.9 : g.track <= -3 ? 0.55 : revealed ? 0.45 : 0.2)) {
       const hearts = hand.filter((c) => c.suit === 'heart' && value(c) <= 5);
       const cs = hearts.length ? cheapest(hearts, 1) : cheapest(hand, 1);
       return go(ritual, cs.map((c) => c.id));
     }
   }
   const fodder = hand.filter((c) => c.key !== 'strike' || !hasStrike);
-  if (quest && (p.role === 'lord' || p.role === 'loyalist') && fodder.length >= 2 && spare && Math.random() < (g.track <= -5 ? 0.8 : g.track >= 4 ? 0.05 : 0.12)) {
+  // ผู้แฝงตัวแพ้ถ้าสุริยุปราคาสมบูรณ์ จึงต้านความมืดด้วย (แต่ไม่ช่วยให้จอกปรากฏ เพราะกษัตริย์จะอมตะ)
+  const questChance = p.role === 'traitor' ? (g.track <= -6 ? 0.85 : g.track <= -3 ? 0.35 : 0)
+    : (p.role === 'lord' || p.role === 'loyalist') ? (g.track <= -7 ? 0.8 : g.track <= -4 ? 0.45 : g.track >= 4 ? 0.05 : 0.1) : 0;
+  if (quest && fodder.length >= 2 && (spare || g.track <= -6) && Math.random() < questChance) {
     const clubs = fodder.filter((c) => c.suit === 'club');
     const cs = clubs.length >= 2 && cheapest(clubs, 2).every((c) => value(c) <= 5) ? cheapest(clubs, 2) : cheapest(fodder, 2);
     return go(quest, cs.map((c) => c.id));
@@ -383,6 +420,7 @@ function vow(g, p, req) {
     const top = g.highestHp(p);
     if ([...top].some((t) => isEnemy(g, p, t) && g.inAttackRange(p, t)) && Math.random() < 0.7) return { option: 'valor' };
   }
+  if (has('mercy') && p.role === 'traitor' && rebelsLeft(g) === 0 && p.hp <= p.maxHp - 2 && !strikes) return { option: 'mercy' };
   const woundedFriend = g.alive().some((q) => isFriend(g, p, q) && q.hp < q.maxHp);
   if (has('mercy') && !strikes && hand.length <= 3 && woundedFriend && Math.random() < 0.25) return { option: 'mercy' };
   if (has('tithe') && p.hp >= 3 && hand.length <= 2 && Math.random() < 0.4) return { option: 'tithe' };
@@ -468,4 +506,4 @@ function decide(g, p, req) {
   }
 }
 
-module.exports = { decide, isEnemy, isFriend };
+module.exports = { decide, isEnemy, isFriend, rebelsLeft };

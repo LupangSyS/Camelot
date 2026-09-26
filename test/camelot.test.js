@@ -172,3 +172,32 @@ test('hero skills: Galahad is immune to curses, Viviane veils herself from flame
   b.equip.armor = card(g, 'mantle');
   assert.ok(!g.veilBlocks(b), 'no longer veiled while equipped');
 });
+
+test('renegade: never feeds the Eclipse, the Eclipse stops once the Coven is gone, and Mercy is not offered in a duel', async () => {
+  const bot = require('../server/game/bot');
+  const g = setup(6);
+  const traitor = byRole(g, 'traitor');
+  for (const p of g.players) g.draw(p, 4);
+  g.ts.player = traitor;
+  g.track = -8;
+  for (let i = 0; i < 30; i++) {
+    const a = bot.decide(g, traitor, { type: 'play', usables: g.playUsables(traitor) });
+    if (a.end) break;
+    assert.notStrictEqual(a.usable, 'ritual', 'the Renegade never performs a Dark Ritual');
+  }
+  g.round = 10;
+  assert.ok(g.eclipseRate() > 0);
+  for (const p of g.players) if (p.role === 'rebel') { p.alive = false; p.ghost = true; }
+  assert.strictEqual(g.eclipseRate(), 0, 'no Coven left alive → the Eclipse stops creeping');
+  // the Renegade treats loyal knights as enemies only after the Coven is gone, and never the King before the final duel
+  const lord = byRole(g, 'lord');
+  assert.strictEqual(bot.isEnemy(g, traitor, lord), false);
+  for (const p of g.players) if (p !== lord && p !== traitor) { p.alive = false; p.ghost = true; }
+  assert.strictEqual(bot.isEnemy(g, traitor, lord), true, 'one-on-one with the King: strike');
+  g.ts.player = traitor;
+  const ans = [];
+  const orig = g.ask.bind(g);
+  g.ask = (p, req) => { ans.push(req); return orig(p, req); };
+  await g.declareVow(traitor);
+  assert.ok(!ans[0].options.some((o) => o.id === 'mercy'), 'no Vow of Mercy in a duel');
+});
