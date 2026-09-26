@@ -90,9 +90,9 @@ function artUrl(kind, id) {
   return u ? `art/${u}` : null;
 }
 const bgStyle = (url) => (url ? ` style="background-image:url('${esc(url)}')"` : '');
-function avatarHTML(heroId, extra = '') {
+function avatarHTML(heroId, extra = '', dark = false) {
   const h = heroId && M().heroes[heroId];
-  const url = h && artUrl('heroes', heroId);
+  const url = h && ((dark && artUrl('dark', heroId)) || artUrl('heroes', heroId));
   const k = h ? `k-${h.kingdom}` : '';
   return `<span class="avatar ${k} ${url ? 'img' : ''} ${extra}"${bgStyle(url)}>${h ? (url ? '' : esc(h.en[0])) : '?'}</span>`;
 }
@@ -314,6 +314,8 @@ function lobbyHTML() {
       <p class="muted small">ส่งลิงก์ให้เพื่อน หรือเพิ่มบอทให้ครบ · รองรับ 2–10 คน · ปิดหน้าเว็บแล้วเปิดใหม่ได้ ระบบจำที่นั่งของคุณ</p>
       <ul class="plist">${rows}</ul>
       <div class="roles-line">${roleDistribution(n)}</div>
+      <div class="advrow">${host && !ended ? `<button class="btn sm ${r.advanced ? 'gold' : ''}" data-act="advToggle">⚙ ระบบขั้นสูง: ${r.advanced ? 'เปิด' : 'ปิด'}</button>` : `<span class="badge">⚙ ระบบขั้นสูง: ${r.advanced ? 'เปิด' : 'ปิด'}</span>`}
+        <span class="muted small">สภาโต๊ะกลม · ด้านมืด · ลิขิตชะตา · ภัยพิบัติ · พิธีชิงมงกุฎของผู้แฝงตัว</span></div>
       <div class="actions" style="margin-top:14px">
         ${host && !ended ? `<button class="btn" data-act="addBot" ${n >= 10 ? 'disabled' : ''}>🤖 เพิ่มบอท</button>
           <button class="btn primary" data-act="start" ${n < 2 ? 'disabled' : ''}>⚔ เริ่มเกม (${n} คน)</button>` : `<span class="muted">${ended ? 'เกมจบแล้ว' : 'รอหัวห้องเริ่มเกม…'}</span>`}
@@ -346,12 +348,13 @@ function tileHTML(p, { mine = false } = {}) {
   const judge = p.judge.map((c) => `<span class="chip judge" data-card="${c.id}" title="${esc(cardInfo(c.as || c.key).desc)}">⚖ ${esc(cardInfo(c.as || c.key).name)}</span>`).join('');
   const flags = [!p.connected && !p.isBot ? '📴 หลุด' : '', p.isBot ? '🤖' : ''].filter(Boolean).join(' ');
   return `<div class="${cls}" data-seat="${p.seat}">
-    <div class="t-top">${avatarHTML(p.hero)}
-      <div class="t-names"><b>${esc(p.name)}${selNo}</b><small>${h ? `${esc(h.name)} · ${esc(M().kingdoms[h.kingdom].name)}` : 'กำลังเลือก…'}</small></div>
+    <div class="t-top">${avatarHTML(p.hero, p.awakened ? 'dark' : '', p.awakened)}
+      <div class="t-names"><b>${esc(p.name)}${selNo}</b><small>${h ? `${esc(heroNameOf(p))} · ${esc(M().kingdoms[h.kingdom].name)}` : 'กำลังเลือก…'}</small></div>
       ${h ? `<button class="info" data-hero="${p.hero}" title="ดูทักษะ">?</button>` : ''}</div>
     <div class="t-meta">${p.ghost ? '👻 วิญญาณ' : hpHTML(p)} ${roleBadge(p.role)} ${zoneBadge(p)} ${statusHTML(p)}</div>
     <div class="t-meta"><span class="hc">🂠 ${p.handCount}</span>${p.distance != null ? `<span class="${p.inRange ? 'inr' : ''}">ระยะ ${p.distance}${p.inRange ? ' 🎯' : ''}</span>` : ''}<span class="flag">${flags}</span></div>
     ${eq || judge ? `<div class="chips">${eq}${judge}</div>` : ''}
+    ${mine ? secretHTML() : ''}
   </div>`;
 }
 
@@ -403,7 +406,7 @@ function zoneDialHTML() {
     const r = n > 1 ? (z === 'nexus' ? 0.07 : 0.09) : 0;
     const x = zx + Math.cos(a) * r; const y = zy + Math.sin(a) * r;
     const h = p.hero && M().heroes[p.hero];
-    const u = h && artUrl('heroes', p.hero);
+    const u = h && ((p.awakened && artUrl('dark', p.hero)) || artUrl('heroes', p.hero));
     const cls = ['tok', p.seat === g.mySeat ? 'me' : '', g.turnSeat === p.seat ? 'current' : '', cands.has(p.seat) ? 'cand' : '', S.sel && S.sel.targets.includes(p.seat) ? 'picked' : ''].join(' ');
     return `<span class="${cls}" data-seat="${p.seat}" title="${esc(`${p.name} · ${M().zones[z].name}`)}" style="left:${(x * 100).toFixed(1)}%;top:${(y * 100).toFixed(1)}%;${u ? `background-image:url('${esc(u)}')` : ''}">${u ? '' : esc(p.name[0])}</span>`;
   })).join('');
@@ -438,11 +441,11 @@ function seatHTML(p) {
   const said = recentSay(p.pid);
   const bubble = said ? `<div class="s-bubble ${pos.cy < -0.3 ? 'below' : ''}">${esc(said)}</div>` : '';
   return `<div class="${cls}" data-seat="${p.seat}" style="left:calc(50% + ${pos.cx.toFixed(4)} * (50% - var(--shw)));top:calc(50% + ${pos.cy.toFixed(4)} * (50% - var(--shh)))">
-    ${bubble}<div class="s-av">${avatarHTML(p.hero)}
+    ${bubble}<div class="s-av">${avatarHTML(p.hero, p.awakened ? 'dark' : '', p.awakened)}
       <span class="s-hc" title="การ์ดในมือ">${p.handCount}</span>${judge ? `<span class="s-judges">${judge}</span>` : ''}${selNo}
       ${h ? `<button class="info s-info" data-hero="${p.hero}" title="ดูทักษะ">?</button>` : ''}</div>
     <div class="s-name">${p.seat === g.mySeat ? '<span class="s-you">คุณ</span>' : ''}${off}${esc(p.name)}</div>
-    <div class="s-hero">${h ? esc(h.name) : 'กำลังเลือก…'} ${roleBadge(p.role)}</div>
+    <div class="s-hero">${h ? esc(heroNameOf(p)) : 'กำลังเลือก…'} ${roleBadge(p.role)}${p.destiny ? ` <span class="stt" title="${esc(`ลิขิตชะตาสำเร็จ: ${M().destinies[p.destiny].name}`)}">🌟</span>` : ''}</div>
     <div class="s-hp">${p.alive ? hpHTML(p) : p.ghost ? `👻 วิญญาณ${p.status && p.status.spectral ? ` · ✧${p.status.spectral}` : ''}` : '☠ สิ้นชีพ'} ${dist}${statusHTML(p)}</div>
     ${p.alive ? `<div class="s-zone">${zoneBadge(p)}</div>` : ''}
     ${eq ? `<div class="s-eq">${eq}</div>` : ''}
@@ -546,7 +549,7 @@ function promptHTML() {
     if (o) {
       const sk = o.skill && M().skills[o.skill];
       const cd = o.as ? cardInfo(o.as) : null;
-      const extra = o.weave ? M().weaves[o.weave].desc : SPECIAL_HINT[o.special] || (sk ? sk.desc : cd ? cd.desc : '');
+      const extra = o.weave ? M().weaves[o.weave].desc : SPECIAL_HINT[o.special] || SPECIAL_HINT[o.adv] || (M().chaos && M().chaos[o.adv] ? M().chaos[o.adv].desc : '') || (sk ? sk.desc : cd ? cd.desc : '');
       hint = `▶ ${esc(o.label)}${extra ? ` — ${esc(extra)}` : ''}`;
       if (o.pick) hint += ` <b>(เลือกการ์ด ${o.pick.min === o.pick.max ? o.pick.min : `${o.pick.min}–${o.pick.max}`} ใบ: เลือกแล้ว ${S.sel.cards.length})</b>`;
       if (pr.type === 'play' && o.targets) {
@@ -567,6 +570,8 @@ function promptHTML() {
     if (pr.min === 0) buttons += `<button class="btn sm" data-act="skipPlayers">ข้าม</button>`;
   } else if (pr.type === 'option') {
     buttons = pr.options.map((x) => `<button class="btn sm ${x.id === 'yes' ? 'gold' : ''}" data-act="option" data-id="${esc(x.id)}"${pr.kind === 'vow' && M().vows[x.id] ? ` title="${esc(M().vows[x.id].desc)}"` : ''}>${esc(x.label)}</button>`).join('');
+    if (pr.kind === 'vote') hint = '⚪ หินขาว = เห็นชอบ · ⚫ หินดำ = คัดค้าน — ทุกคนเห็นว่าใครโหวตอะไร';
+    if (pr.kind === 'decree_pick') hint = 'เลือกพระราชกำหนดที่จะเสนอต่อสภา (ต้องเสนอ 1 ฉบับ) แล้วทุกคนจะลงมติ';
     if (pr.kind === 'vow') hint = Object.values(M().vows).map((v) => `<b>${esc(v.name)}</b>: ${esc(v.desc)}`).join('<br>');
     if (pr.kind === 'move' || pr.kind === 'telekinesis') hint = 'ดูตำแหน่งบนแผนที่โต๊ะกลมกลางโต๊ะ (แตะเพื่อขยาย)';
   } else if (pr.type === 'select' || pr.type === 'hero') {
@@ -598,6 +603,7 @@ function gameHTML() {
       <b>ห้อง ${esc(r.code)}</b><span>รอบ ${g.round}</span><span>🂠 กอง ${g.deckCount}</span>
       <span class="phase">${turnP ? `เทิร์น ${esc(turnP.name)} · ` : ''}${esc(g.phaseName)}</span>
       ${trackHTML()}
+      ${decreeHTML()}
       ${g.vow ? `<span class="vowtag ${g.vow.broken ? 'broken' : ''}" title="${esc(M().vows[g.vow.id].desc)}">${g.vow.broken ? '⛓' : '📜'} ${esc(M().vows[g.vow.id].name)}</span>` : ''}
       ${S.online ? '' : '<span class="offline">⚠ กำลังเชื่อมต่อใหม่…</span>'}
       <span class="sp"></span>
@@ -610,7 +616,7 @@ function gameHTML() {
         <div class="felt-row">${zoneDialHTML()}
         <div class="piles"><div class="pile" title="กองจั่ว">${cardHTML(null, 'sm')}<span>${g.deckCount}</span></div>
           <div class="pile" title="สุสาน (กองทิ้ง)"><div class="card sm discard">สุสาน</div><span>${g.discardCount}</span></div></div></div>
-        ${tableHTML()}<div class="status">${waitingHTML()}</div>
+        ${threatHTML()}${tableHTML()}<div class="status">${waitingHTML()}</div>
       </div></div>
       ${arrowsHTML()}
       ${[mine, ...order].map((p) => seatHTML(p)).join('')}
@@ -623,8 +629,45 @@ function gameHTML() {
   </div>${S.drawer ? drawerHTML() : ''}`;
 }
 
+function heroNameOf(p) {
+  return p.awakened && M().dark && M().dark[p.hero] ? `🌑 ${M().dark[p.hero].name}` : M().heroes[p.hero].name;
+}
+function decreeHTML() {
+  const a = G().adv;
+  if (!a) return '';
+  const out = [];
+  if (a.decree) { const d = M().decrees[a.decree]; out.push(`<span class="vowtag decree" title="${esc(d.desc)}">🏛 ${esc(d.name)}</span>`); }
+  if (a.rite) out.push(`<span class="vowtag rite" title="ผู้แฝงตัวประกาศพิธีชิงมงกุฎเลือด: ทำลายหรือชิงเอ็กซ์คาลิเบอร์ก่อนถึงเทิร์นถัดไปของเขา!">👑 พิธีชิงมงกุฎ: ${esc(G().players[a.rite.seat].name)}</span>`);
+  return out.join('');
+}
+function threatHTML() {
+  const a = G().adv;
+  if (!a || !a.threat) return '';
+  const th = a.threat;
+  const t = M().threats[th.id];
+  const bar = th.maxHp ? `<div class="th-bar"><i style="width:${(th.hp / th.maxHp) * 100}%"></i><span>${th.hp}/${th.maxHp}</span></div>` : `<div class="th-left">เหลืออีก ${th.left} รอบ</div>`;
+  return `<div class="threat" title="${esc(t.desc)}"${bgStyle(artUrl('threats', th.id))}><b>🐉 ${esc(t.name)}</b>${bar}</div>`;
+}
+function secretHTML() {
+  const a = G().adv;
+  if (!a || !a.mine) return '';
+  const m = a.mine;
+  const parts = [];
+  if (m.dest) {
+    const d = M().destinies[m.dest.id];
+    const st = m.dest.done ? '✅ สำเร็จ' : m.dest.failed ? '❌ ล้มเหลว' : `ความคืบหน้า ${m.dest.progress}`;
+    parts.push(`<div class="secret" title="${esc(`${d.desc} → ${d.reward}`)}"><b>📜 ลิขิตชะตา: ${esc(d.name)}</b><small>${esc(d.desc)} · ${st}</small></div>`);
+  }
+  if (m.chaos != null) {
+    const f = m.facade ? M().facades[m.facade] : null;
+    parts.push(`<div class="secret chaos" title="${esc(Object.values(M().chaos).map((c) => `${c.name}: ${c.desc}`).join('\n'))}"><b>🌀 ไอความโกลาหล ${'◆'.repeat(m.chaos)}${'◇'.repeat(Math.max(0, 4 - m.chaos))}</b><small>${f ? `${esc(f.name)}: ${esc(f.desc)}` : ''}</small></div>`);
+  }
+  return parts.join('');
+}
+
 const SPECIAL_HINT = {
   move: 'ย้ายไปยังโซนที่ติดกัน (หรือศูนย์กลางมนตรา) ได้เทิร์นละ 1 ครั้ง — ระยะคิดจากโซน',
+  threat: 'สละการ์ด 1 ใบ (ในมือหรืออุปกรณ์) เพื่อโจมตีภัยพิบัติ — ธาตุอัคคี ♦ ทำความเสียหาย 2 · ผู้ปิดฉากได้รางวัล',
   ritual: 'สละเลือด 1 และทิ้งการ์ด 1 ใบ เลื่อนแถบชะตาไปทางความมืด (ใบ ♥ = 2 ช่อง) ทุกคนจะเห็นว่าคุณทำ!',
   quest: 'ทิ้งการ์ด 2 ใบ เลื่อนแถบชะตาไปทางจอกศักดิ์สิทธิ์ (♣♣ = 2 ช่อง) ถึง +10 จอกปรากฏ: ลัทธิเงามืดเสียเลือดครึ่งหนึ่ง กษัตริย์อมตะชั่วคราว',
 };
@@ -691,7 +734,7 @@ function renderModal() {
     const rows = g.players.map((p) => {
       const h = p.hero && M().heroes[p.hero];
       const win = g.result.winners.includes(p.pid);
-      return `<div class="${win ? 'win' : ''}">${win ? '🏆' : '·'} <b>${esc(p.name)}</b> ${h ? esc(h.name) : ''} ${roleBadge(p.role)} ${p.alive ? '' : '👻'}</div>`;
+      return `<div class="${win ? 'win' : ''}">${win ? '🏆' : '·'} <b>${esc(p.name)}</b> ${h ? esc(heroNameOf(p)) : ''} ${roleBadge(p.role)} ${p.alive ? '' : '👻'}${p.destiny ? ` <small class="muted">📜 ${esc(M().destinies[p.destiny].name)}</small>` : ''}</div>`;
     }).join('');
     const iWon = g.result.winners.includes(S.st.me);
     html = `<div class="modal" style="max-width:480px"><div class="result">${iWon ? '🎉 คุณชนะ!' : '🏁 จบเกม'}</div>
@@ -787,6 +830,7 @@ document.addEventListener('click', (e) => {
     case 'reopen': if (S.sel) S.sel.hidden = false; renderModal(); break;
     case 'hero': answer({ hero: el.dataset.id }); break;
     case 'dial': S.dialBig = !S.dialBig; render(); break;
+    case 'advToggle': send('setAdvanced', { on: !S.st.room.advanced }); break;
     case 'weaves': S.showWeaves = !S.showWeaves; render(); break;
     case 'opt': {
       const o = options().find((x) => x.id === el.dataset.id);

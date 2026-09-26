@@ -9,13 +9,16 @@ const crypto = require('crypto');
 const designs = require('../public/artgen/designs');
 const { encodePNG } = require('./png');
 const { CARD_INFO } = require('../server/game/cards');
-const { HEROES } = require('../server/game/heroes');
+const { HEROES, DARK } = require('../server/game/heroes');
+const { THREATS } = require('../server/game/advanced');
 
 const ART_DIR = path.join(__dirname, '..', 'public', 'art');
 
 function allSlots() {
   return [
     ...Object.keys(HEROES).map((id) => ['heroes', id]),
+    ...Object.keys(DARK).map((id) => ['dark', id]),
+    ...Object.keys(THREATS).map((id) => ['threats', id]),
     ...Object.keys(CARD_INFO).map((id) => ['cards', id]),
     ['misc', 'back'],
     ['misc', 'felt'],

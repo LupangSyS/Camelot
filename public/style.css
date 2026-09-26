@@ -490,3 +490,26 @@ input[type=text]:focus { outline: 2px solid var(--gold); outline-offset: -1px; }
 .btn.rune { border-color: #6a7ad8; background: linear-gradient(#26306a, #1a2050); }
 .btn.rune-t { border-color: #8a9af0; color: #cfd8ff; }
 .btn.rune-t.on { background: #2a3478; }
+
+/* ══════════ ระบบขั้นสูง ══════════ */
+.advrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.vowtag.decree { border-color: #8ab0ff; color: #d8e4ff; background: rgba(90, 120, 220, .2); text-decoration: none; }
+.vowtag.rite { border-color: #ff4a6a; color: #ffd0d8; background: rgba(200, 30, 60, .35); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 12px #ff4a6a; } }
+.threat {
+  width: min(58vw, 220px); border-radius: 10px; padding: 6px 8px 5px; background: #200 center / cover no-repeat;
+  box-shadow: 0 0 0 2px #ff6a3a, 0 6px 18px rgba(0, 0, 0, .6); display: grid; gap: 4px; text-shadow: 0 1px 3px #000;
+}
+.threat b { font-size: 12px; color: #ffe0c0; }
+.th-bar { position: relative; height: 12px; background: rgba(0, 0, 0, .6); border-radius: 99px; overflow: hidden; }
+.th-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #ff3a1a, #ffb040); transition: width .5s; }
+.th-bar span { position: absolute; inset: 0; font-size: 10px; text-align: center; line-height: 12px; font-weight: 700; }
+.th-left { font-size: 11px; color: #ffe0c0; }
+.secret { background: linear-gradient(160deg, #2a2248, #141026); border: 1px solid #8a7ad8; border-radius: 8px; padding: 4px 7px; display: grid; gap: 1px; margin-top: 4px; }
+.secret b { font-size: 12px; color: #e0d8ff; }
+.secret small { font-size: 11px; color: var(--muted); line-height: 1.35; }
+.secret.chaos { border-color: #d84a8a; background: linear-gradient(160deg, #3a1030, #180814); }
+.secret.chaos b { color: #ffc0e0; letter-spacing: 1px; }
+.avatar.dark { box-shadow: 0 0 10px #ff2a5a; }
+.cf-dark { margin-top: 6px; padding-top: 5px; border-top: 1px dashed #8a3a5a; }
+.cf-dark > b { color: #b0103a; }

@@ -4,6 +4,7 @@
 // รู้จักระบบใหม่ทั้งหมด: โซนโต๊ะกลม, ผสานรูน, แถบชะตา, สัตยาบัน และร่างวิญญาณ
 
 const { CARD_INFO } = require('./cards');
+const { DECREES } = require('./advanced');
 
 const VALUE = { elixir: 9, dispel: 7, blessing: 7, aegis: 6, strike: 4, blood_duel: 4, blink: 5, petrify: 5, meteor: 3, siren: 3, blood_moon: 1 };
 const value = (c) => (c ? VALUE[c.key] ?? 2 : 0);
@@ -201,6 +202,41 @@ function play(g, p, req) {
     }
   }
 
+  // ── ระบบขั้นสูง ──
+  const adv = (id) => us.find((x) => x.id === id);
+  let a = adv('chaos:rite');
+  if (a) return go(a, []);
+  a = adv('chaos:seize');
+  if (a) {
+    const t = a.targets.candidates.map((s2) => g.players[s2]).find((q) => g.hasWeapon(q, 'excalibur'));
+    if (t) return go(a, [], [t.seat]);
+  }
+  a = adv('chaos:peek');
+  if (a && Math.random() < 0.08) return go(a, [], [pickRandom(a.targets.candidates)]);
+  if (!mercy) {
+    a = us.find((x) => x.skill === 'chrono_ruin');
+    if (a) { const t = chooseEnemies(g, p, a.targets.candidates, 1, false); if (t.length) return go(a, [], t); }
+    a = us.find((x) => x.skill === 'dark_nova');
+    if (a) {
+      const near = g.others(p).filter((q) => g.distance(p, q) <= 1);
+      if (near.filter((q) => isEnemy(g, p, q)).length > near.filter((q) => isFriend(g, p, q)).length) return go(a, []);
+    }
+    a = us.find((x) => x.skill === 'hex_storm');
+    if (a) {
+      const others = g.others(p);
+      if (others.filter((q) => isEnemy(g, p, q)).length > others.filter((q) => isFriend(g, p, q)).length) return go(a, cheapest(a.pick.pool.map((id) => g.cardById.get(id)), 1).map((c) => c.id));
+    }
+  }
+  a = adv('threat');
+  if (a) {
+    const pool = a.pick.pool.map((id) => g.cardById.get(id)).filter((c) => value(c) <= 3 && !(c.key === 'strike' && hasStrike && byAs('strike').length <= 1));
+    const will = p.role === 'rebel' ? (p.hp <= 2 ? 0.6 : 0.3) : p.role === 'traitor' ? 0.5 : 0.75;
+    if (pool.length && Math.random() < will) {
+      const flame = pool.filter((c) => c.suit === 'diamond');
+      return go(a, [(flame.length ? cheapest(flame, 1) : cheapest(pool, 1))[0].id]);
+    }
+  }
+
   // ผสานรูน
   const weave = (id) => us.find((x) => x.weave === id);
   const runeCards = (x) => {
@@ -363,6 +399,7 @@ function select(g, p, req) {
       const friends = g.others(p).filter((q) => isFriend(g, p, q));
       return { refs: friends.length && items.length ? [items[0].ref] : [] };
     }
+    case 'levy':
     case 'gift_card':
       return { refs: byValue(false).slice(0, 1).map((i) => i.ref) };
     case 'omniscience':
@@ -401,6 +438,20 @@ function players(g, p, req) {
       if (lord && p.role !== 'rebel') return { seats: [lord.seat] };
       return { seats: [pickRandom(ps).seat] };
     }
+    case 'inquisition': {
+      const lord = g.players.find((q) => q.role === 'lord');
+      const order = p.role === 'rebel'
+        ? [...ps].sort((a2, b) => a2.rebelScore - b.rebelScore)
+        : [...ps].sort((a2, b) => b.rebelScore - a2.rebelScore);
+      void lord;
+      return { seats: [order[0].seat] };
+    }
+    case 'redirect': {
+      const lord = g.players.find((q) => q.role === 'lord');
+      if (!lord || lord.hp > 2 || rebelsLeft(g) === 0) return { seats: [] };
+      const en = ps.filter((q) => isEnemy(g, p, q));
+      return { seats: [(en[0] || pickRandom(ps)).seat] };
+    }
     case 'gift':
     case 'mercy': {
       const f = ps.filter((q) => isFriend(g, p, q)).sort((a, b) => a.hp - b.hp);
@@ -433,6 +484,25 @@ function option(g, p, req) {
   switch (req.kind) {
     case 'vow':
       return vow(g, p, req);
+    case 'facade':
+      return { option: Math.random() < 0.5 ? 'crown' : 'coven' };
+    case 'decree_pick': {
+      const ids = req.options.map((o) => o.id).filter((id) => DECREES[id]);
+      ids.sort((x, y) => DECREES[y].king - DECREES[x].king);
+      return { option: ids[0] };
+    }
+    case 'vote': {
+      const v = DECREES[req.decree].king;
+      const pro = v > 0 ? 'white' : v < 0 ? 'black' : pickRandom(['white', 'black']);
+      const con = pro === 'white' ? 'black' : 'white';
+      if (p.role === 'lord' || p.role === 'loyalist') return { option: pro };
+      if (p.role === 'rebel') return { option: p.rebelScore < 3 && Math.random() < 0.3 ? pro : con };
+      const lord = g.players.find((q) => q.role === 'lord');
+      if (rebelsLeft(g) === 0) return { option: con };
+      return { option: lord && lord.hp <= Math.ceil(lord.maxHp / 2) ? pro : pickRandom([pro, con]) };
+    }
+    case 'awaken':
+      return { option: 'yes' };
     case 'move': {
       const { zone } = bestZone(g, p, req.options.map((o) => o.id), p.hand.some((c) => c.key === 'strike'));
       return { option: zone };

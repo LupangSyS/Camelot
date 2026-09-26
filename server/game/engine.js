@@ -10,7 +10,7 @@
 //   • สัตยาบัน/พันธสัญญา: ประกาศต้นเทิร์นเพื่อรับพลัง แลกกับข้อผูกมัด
 
 const { CARD_INFO, SUIT_SYMBOL, buildDeck, colorOf, isRed, isBlack, cardStr } = require('./cards');
-const { HEROES, SKILLS, LORD_HEROES, ROLES } = require('./heroes');
+const { HEROES, SKILLS, LORD_HEROES, ROLES, DARK } = require('./heroes');
 const bot = require('./bot');
 
 const ROLE_TABLE = {
@@ -91,7 +91,7 @@ const TRACK_MAX = 10;
 
 const HARMFUL = new Set(['strike', 'blood_duel', 'blink', 'petrify', 'siren', 'meteor']);
 const SINGLE_TARGET = new Set(['blink', 'blood_duel', 'siren', 'petrify']);
-const JUDGE_NAMES = { petrify: CARD_INFO.petrify.name, blood_moon: CARD_INFO.blood_moon.name, pridwen: CARD_INFO.pridwen.name };
+const JUDGE_NAMES = { petrify: CARD_INFO.petrify.name, blood_moon: CARD_INFO.blood_moon.name, pridwen: CARD_INFO.pridwen.name, wild_hunt: 'การล่าแห่งเทพพงไพร' };
 
 /** ผลตัดสินแบบใด "ดีต่อผู้ถูกตัดสิน" (ใช้กับ สัจธรรมชี้นำ / เปลี่ยนผันชะตา) */
 function judgeGood(reason, c) {
@@ -100,6 +100,7 @@ function judgeGood(reason, c) {
     case 'petrify': return c.suit === 'club';
     case 'blood_moon': return !(c.suit === 'spade' && c.rank >= 2 && c.rank <= 9);
     case 'pridwen': return isRed(c);
+    case 'wild_hunt': return c.suit !== 'spade';
     default: return true;
   }
 }
@@ -144,6 +145,7 @@ class Game {
     this.tableSeq = 0;
     this.timeouts = { play: 90000, respond: 25000, negate: 12000, disconnected: 12000, ...(o.timeouts || {}) };
     this.maxRounds = o.maxRounds || 0;
+    this.adv = o.advanced !== false; // ระบบขั้นสูง (สภา, ด้านมืด, ลิขิตชะตา, ภัยพิบัติ, พิธีชิงมงกุฎ)
     const roles = shuffle([...ROLE_TABLE[n]]);
     this.players = o.players.map((p, i) => ({
       pid: p.pid, name: p.name, isBot: !!p.isBot, connected: true, seat: i, role: roles[i],
@@ -151,6 +153,7 @@ class Game {
       hand: [], equip: emptyEquip(), judgeZone: [], zone: 'marches',
       rebelScore: 0, ward: null, poisonedBy: null, sealTurns: 0, fallen: false, curseWard: false,
       decapUsed: false, philter: null, spectral: [], immortalTurns: 0, vow: null,
+      chaos: 0, facade: null, awakened: false, revealed: false, dest: null, boons: {}, lastDrawn: [], jailedRound: 0,
     }));
     const lordSeat = this.players.find((p) => p.role === 'lord').seat;
     for (const p of this.players) {
@@ -173,6 +176,9 @@ class Game {
     this.aborted = false;
     this.track = 0;
     this.grailFound = false;
+    this.decree = null;
+    this.threat = null;
+    this.rite = null;
     this.whispers = new Map(); // pid -> { seat, cards } ที่วิญญาณเห็นล่าสุด (ส่วนตัว)
   }
 
@@ -242,10 +248,13 @@ class Game {
   hasSkill(p, id) {
     if (!p || !p.alive || !p.hero) return false;
     if (p.sealTurns > 0) return false;
-    if (!HEROES[p.hero].skills.includes(id)) return false;
+    if (!this.skillsOf(p).includes(id)) return false;
     if (SKILLS[id].lord && p.role !== 'lord') return false;
     return true;
   }
+  /** ทักษะปัจจุบัน (ด้านมืดแทนที่ทั้งหมดเมื่อจุติ) */
+  skillsOf(p) { return p.awakened && DARK[p.hero] ? DARK[p.hero].skills : HEROES[p.hero].skills; }
+  heroName(p) { return p.awakened && DARK[p.hero] ? DARK[p.hero].name : HEROES[p.hero].name; }
   equipCards(p) { return Object.values(p.equip).filter(Boolean); }
   hasAnyCard(p, withJudge = true) {
     return p.hand.length > 0 || this.equipCards(p).length > 0 || (withJudge && p.judgeZone.length > 0);
@@ -259,6 +268,8 @@ class Game {
     let r = Math.max(1, ...this.weapons(p).map((w) => CARD_INFO[w.key].range || 1));
     if (this.hasSkill(p, 'volley')) r = Math.max(r, 3);
     if (this.solarActive(p)) r++;
+    if (this.hasSkill(p, 'fury')) r++;
+    if (this.decree === 'martial_law') r++;
     return r;
   }
   distance(a, b) {
@@ -267,17 +278,20 @@ class Game {
     if (b.equip.defHorse && !this.hasSkill(a, 'volley')) d++;
     if (this.hasSkill(b, 'veil')) d++;
     if (a.equip.offHorse) d--;
+    if (a.boons && a.boons.stride) d--;
     return Math.max(1, d);
   }
   inAttackRange(a, b) { return a !== b && b.alive && this.distance(a, b) <= this.attackRange(a); }
   canBeAttacked(t) { return t.alive; }
   hasMantle(t) { return this.armorKey(t) === 'mantle'; }
-  attackLimit(p) { return this.hasSkill(p, 'twinfang') ? 2 : 1; }
+  attackLimit(p) {
+    return (this.hasSkill(p, 'twinfang') ? 2 : 1) + (this.hasSkill(p, 'fury') ? 1 : 0) + (this.decree === 'trial_by_combat' ? 1 : 0);
+  }
   canUseAttack(p) {
-    return this.hasWeapon(p, 'carnwennan') || this.ts.attacksUsed < this.attackLimit(p);
+    return this.hasWeapon(p, 'carnwennan') || this.hasSkill(p, 'abyssal_blade') || this.ts.attacksUsed < this.attackLimit(p);
   }
   canCurse(t, key) {
-    if (!t.alive || this.hasSkill(t, 'sanctuary')) return false;
+    if (!t.alive || this.hasSkill(t, 'sanctuary') || (t.boons && t.boons.curseImmune)) return false;
     if (t.judgeZone.some((c) => c.asKey === key)) return false;
     return true;
   }
@@ -591,6 +605,7 @@ class Game {
   async run() {
     try {
       await this.chooseHeroes();
+      if (this.adv) await this.setupAdvanced();
       for (const p of this.players) this.draw(p, p.role === 'lord' ? 5 : 4);
       this.log('แจกการ์ดคนละ 4 ใบ (กษัตริย์ 5 ใบ) — ศึกชิงบัลลังก์มนตราเริ่มขึ้น!');
       let cur = this.players.find((p) => p.role === 'lord');
@@ -601,6 +616,7 @@ class Game {
             throw new GameOver({ winnerRole: null, winners: [], text: 'เสมอ (ครบจำนวนรอบ)' });
           }
           if (this.eclipseRate()) await this.moveTrack(-this.eclipseRate(), `🌘 สุริยุปราคาคืบคลาน (เริ่มรอบที่ ${this.round})`);
+          if (this.adv) await this.roundStartAdvanced();
         }
         if (cur.ghost) await this.spectralTurn(cur);
         else await this.runTurn(cur);
@@ -700,12 +716,13 @@ class Game {
     };
     this.table = [];
     p.ward = null;
-    this.log(`── เทิร์นของ ${p.name} (${HEROES[p.hero].name}) @ ${ZONES[p.zone].name} ──`);
+    this.log(`── เทิร์นของ ${p.name} (${this.heroName(p)}) @ ${ZONES[p.zone].name} ──`);
     this.emit('turn', { player: p });
     await this.pause(500);
 
     // รุ่งอรุณ
     this.phase = 'start';
+    if (this.adv) { await this.turnStartAdvanced(p); if (!p.alive) return; }
     await this.declareVow(p);
     if (!p.alive) return;
     if (this.hasSkill(p, 'omniscience')) await this.doOmniscience(p);
@@ -754,7 +771,13 @@ class Game {
 
     // เบิกมนตรา
     this.phase = 'draw';
-    await this.drawPhase(p);
+    if (this.adv && p.jailedRound === this.round) {
+      this.log(`⛓ ${p.name} ถูกคุมขังตามมติสภา ข้ามช่วงเบิกมนตรา`);
+    } else {
+      const before = new Set(p.hand);
+      await this.drawPhase(p);
+      p.lastDrawn = p.hand.filter((c) => !before.has(c));
+    }
     if (!p.alive) return;
 
     // ร่ายเวทและทำศึก
@@ -768,6 +791,7 @@ class Game {
     this.phase = 'discard';
     let limit = Math.max(0, p.hp);
     if (this.hasSkill(p, 'ascetic') && !this.ts.usedAttack) limit += 2;
+    if (this.adv) limit = Math.max(0, limit + this.drawLimitAdjust());
     const excess = p.hand.length - limit;
     if (excess > 0) {
       const cards = await this.chooseOwn(p, { min: excess, max: excess, title: `ช่วงสละพลัง: ทิ้งการ์ด ${excess} ใบ (เก็บได้ ${limit} ใบ)` });
@@ -782,6 +806,7 @@ class Game {
 
   async endOfTurn(p) {
     const ts = this.ts;
+    if (this.adv) await this.turnEndAdvanced(p);
     if (ts.vow === 'mercy' && !ts.vowBroken && p.alive) {
       const cands = this.alive().filter((q) => q.hp < q.maxHp);
       if (cands.length) {
@@ -1026,7 +1051,7 @@ class Game {
         const list = others.filter((q) => this.inAttackRange(p, q) && !(flame && this.veilBlocks(q)));
         return spec(list);
       }
-      case 'elixir': return p.hp < p.maxHp && p.poisonedBy == null ? null : false;
+      case 'elixir': return p.hp < p.maxHp && p.poisonedBy == null && this.decree !== 'martial_law' ? null : false;
       case 'aegis': case 'dispel': return false;
       case 'blink': return spec(others.filter((q) => this.hasAnyCard(q, false) && this.distance(p, q) <= 1 && !this.hasMantle(q)));
       case 'blood_duel': return spec(others.filter((q) => !this.hasMantle(q)));
@@ -1089,10 +1114,10 @@ class Game {
     const sk = (id, extra) => out.push({ id: 'skill:' + id, skill: id, label: SKILLS[id].name, button: true, ...extra });
 
     // ── การเคลื่อนที่บนโต๊ะกลม ──
-    if (!ts.moved) out.push({ id: 'move', label: `🧭 เคลื่อนที่ (จาก ${ZONES[p.zone].name})`, button: true, special: 'move' });
+    if ((!ts.moved || (this.decree === 'open_roads' && ts.moved < 2)) && this.decree !== 'curfew') out.push({ id: 'move', label: `🧭 เคลื่อนที่ (จาก ${ZONES[p.zone].name})`, button: true, special: 'move' });
 
     // ── ผสานรูน ──
-    const weaveCap = this.hasSkill(p, 'overcharge') ? 2 : 1;
+    const weaveCap = (this.hasSkill(p, 'overcharge') ? 2 : 1) + (this.decree === 'arcane_surge' ? 1 : 0) + (p.boons.weave ? 1 : 0);
     if (ts.weaves < weaveCap && hand.length >= 2) {
       const count = {};
       for (const c of hand) count[c.suit] = (count[c.suit] || 0) + 1;
@@ -1112,9 +1137,11 @@ class Game {
 
     // ── แถบชะตา ──
     if (!ts.used.has('track') && hand.length >= 1) {
-      if (p.hp > 1) out.push({ id: 'ritual', special: 'ritual', button: true, label: '🌑 พิธีกรรมสังเวย (เสียเลือด 1 + ทิ้ง 1 ใบ: แถบ -1, ใบ ♥ = -2)', pick: { min: 1, max: 1, pool: hand.map((c) => c.id) } });
-      if (!this.grailFound && hand.length >= 2) out.push({ id: 'quest', special: 'quest', button: true, label: '🏆 ออกแสวงบุญ (ทิ้ง 2 ใบ: แถบ +1, ♣♣ = +2)', pick: { min: 2, max: 2, pool: hand.map((c) => c.id) } });
+      if (p.hp > 1 || (p.facade === 'coven' && this.adv) || this.decree === 'eclipse_festival') out.push({ id: 'ritual', special: 'ritual', button: true, label: '🌑 พิธีกรรมสังเวย (เสียเลือด 1 + ทิ้ง 1 ใบ: แถบ -1, ใบ ♥ = -2)', pick: { min: 1, max: 1, pool: hand.map((c) => c.id) } });
+      const qn = p.facade === 'crown' && this.adv ? 1 : 2; // ตราราชสำนัก: แสวงบุญด้วยการ์ดใบเดียว
+      if (!this.grailFound && hand.length >= qn) out.push({ id: 'quest', special: 'quest', button: true, label: `🏆 ออกแสวงบุญ (ทิ้ง ${qn} ใบ: แถบ +1, ${qn === 1 ? '♣' : '♣♣'} = +2)`, pick: { min: qn, max: qn, pool: hand.map((c) => c.id) } });
     }
+    out.push(...this.advancedUsables(p));
 
     // ── ทักษะฮีโร่ ──
     if (this.hasSkill(p, 'heartstrings') && !ts.used.has('heartstrings') && hand.length && others.length) {
@@ -1147,6 +1174,7 @@ class Game {
     const targets = seats.map((s) => this.players[s]);
     const real = cardIds.map((id) => this.cardById.get(id));
     if (u.special === 'move') return this.doMove(p);
+    if (u.adv) return this.performAdvanced(p, u, real, targets);
     if (u.special === 'ritual' || u.special === 'quest') return this.doTrack(p, u.special, real);
     if (u.weave) return this.doWeave(p, u.weave, real, targets[0]);
     if (u.as) {
@@ -1158,9 +1186,10 @@ class Game {
   }
 
   async doMove(p) {
-    this.ts.moved = true;
+    this.ts.moved = (this.ts.moved || 0) + 1;
     const z = await this.chooseZone(p, p, `🧭 เคลื่อนที่: เลือกโซนปลายทาง (ตอนนี้อยู่ ${ZONES[p.zone].name})`, 'move');
     p.zone = z;
+    this.visitZone(p);
     this.log(`🧭 ${p.name} เคลื่อนไปยัง ${ZONES[z].icon} ${ZONES[z].name}`);
     this.emit('move', { source: p });
   }
@@ -1168,8 +1197,10 @@ class Game {
   async doTrack(p, kind, cards) {
     this.ts.used.add('track');
     this.discardCards(cards);
+    if (this.adv) this.countClubs(p, cards);
     const bonusSuit = kind === 'ritual' ? 'heart' : 'club';
-    const step = cards.every((c) => c.suit === bonusSuit) ? 2 : 1;
+    let step = cards.every((c) => c.suit === bonusSuit) ? 2 : 1;
+    if (kind === 'quest' && this.decree === 'pilgrimage') step++;
     const before = this.track;
     this.track = Math.max(TRACK_MIN, Math.min(TRACK_MAX, this.track + (kind === 'ritual' ? -step : step)));
     if (kind === 'ritual') {
@@ -1177,7 +1208,9 @@ class Game {
       const lord = this.players.find((q) => q.role === 'lord');
       this.noteHostile(p, lord);
       await this.checkTrack();
-      await this.loseHp(p, 1);
+      if (p.facade === 'coven' && this.adv) this.log('(ตราเงามืดคุ้มครอง ไม่ต้องสละเลือด)');
+      else if (this.decree === 'eclipse_festival') this.log('(เทศกาลจันทราสีเลือด: ไม่ต้องสละเลือด)');
+      else await this.loseHp(p, 1);
     } else {
       this.log(`🏆 ${p.name} ออกแสวงบุญ (${cards.map(cardStr).join(', ')}) แถบจอกศักดิ์สิทธิ์เลื่อน ${before} → ${this.track}`);
       const lord = this.players.find((q) => q.role === 'lord');
@@ -1235,6 +1268,7 @@ class Game {
   async doWeave(p, id, cards, t) {
     const w = WEAVES[id];
     this.ts.weaves++;
+    if (this.adv) { this.countClubs(p, cards); this.destinyProgress(p, 'arcane_scholar', 1); }
     this.discardCards(cards);
     this.pushTable(p, { key: cards[0].key, real: cards }, t ? [t.seat] : [], `ᚱ ${w.name}`);
     this.update();
@@ -1281,6 +1315,7 @@ class Game {
       case 'telekinesis': {
         const z = await this.chooseZone(p, t, `${w.name}: ผลัก/ดึง ${t.name} ไปยังโซนใด? (ตอนนี้ ${ZONES[t.zone].name})`, 'telekinesis');
         t.zone = z;
+        this.visitZone(t);
         this.log(`🌀 ${t.name} ถูกคลื่นจิตพัดไปยัง ${ZONES[z].icon} ${ZONES[z].name}`);
         break;
       }
@@ -1304,6 +1339,7 @@ class Game {
 
   /** หลังใช้การ์ด: พระราชโองการ (♣ รักษาอาเธอร์) */
   async afterUse(user, v) {
+    if (this.adv) this.countClubs(user, v.real);
     if (!user.alive || v.suit !== 'club') return;
     if (this.ts && this.ts.exalted) return;
     for (const a of this.alive()) {
@@ -1359,8 +1395,13 @@ class Game {
         this.ts.attacksUsed++;
         if (user === this.ts.player) this.ts.usedAttack = true;
         await this.resolveAttack(user, v, targets);
+        if (this.hasSkill(user, 'abyssal_blade') && user.alive) {
+          this.log(`${user.name} ถูกดาบห้วงเหวกัดกินโลหิต`);
+          await this.loseHp(user, 1);
+        }
         break;
       case 'elixir':
+        if (this.adv && this.threat && this.threat.id === 'blight') { this.log('แผ่นดินต้องสาปดูดซับพลังของน้ำอมฤต ไม่ฟื้นเลือด'); break; }
         this.heal(user, 1, user);
         break;
       case 'blink': {
@@ -1444,6 +1485,7 @@ class Game {
     for (const t0 of targets) {
       if (!t0.alive || !user.alive) continue;
       let t = t0;
+      if (this.adv && t.role === 'lord') t = await this.chaosRedirect(user, t);
       for (const g of this.orderFrom(t)) {
         if (g === t || g === user || !this.hasSkill(g, 'devotion') || !this.hasAnyCard(g, false) || this.distance(g, t) > 1) continue;
         const ok = await this.confirm(g, 'devotion', `${SKILLS.devotion.name}: ทิ้งการ์ด 1 ใบเพื่อรับ「ศรเวท」ของ ${user.name} แทน ${t.name}?`, 'ปกป้อง', 'ไม่', { targetSeat: t.seat, sourceSeat: user.seat });
@@ -1464,7 +1506,7 @@ class Game {
     if (!t.alive || !user.alive) return;
     this.emit('attack', { source: user, target: t });
     const flame = this.isFlame(v);
-    const ignoreArmor = this.hasWeapon(user, 'rhongomyniad');
+    const ignoreArmor = this.hasWeapon(user, 'rhongomyniad') || !!(user.boons && user.boons.pierce);
     if (flame && this.veilBlocks(t)) { this.log(`ม่านหมอกของ ${t.name} ทำให้ศรเวทอัคคีไร้ผล`); return; }
     if (this.hasSkill(t, 'glamour') && user.gender === 'm') {
       const [c] = await this.chooseOwn(user, { min: 0, max: 1, kind: 'glamour', title: `${SKILLS.glamour.name}: ทิ้งการ์ดในมือ 1 ใบเป็นเครื่องบรรณาการแด่ ${t.name} มิฉะนั้นการโจมตีไร้ผล` });
@@ -1477,6 +1519,7 @@ class Game {
       this.log(`${user.name} ใช้ทักษะ ${SKILLS.betrayal.name} จั่ว 1 ใบ`);
     }
     let noDodge = this.valorActive(user);
+    if (!noDodge && this.hasSkill(user, 'tyrant_aura') && this.distance(user, t) <= 1) { noDodge = true; this.log(`👑 ออร่าทรราชของ ${user.name} กดข่ม ${t.name} จนป้องกันไม่ได้`); }
     if (noDodge) this.log(`⚔ สัตยาบันแห่งความกล้า: ${t.name} ป้องกันไม่ได้!`);
     if (!noDodge && this.hasSkill(user, 'peerless') && user.hand.length) {
       const [c] = await this.chooseOwn(user, { min: 0, max: 1, kind: 'peerless', title: `${SKILLS.peerless.name}: ทิ้งการ์ด 1 ใบเพื่อให้ ${t.name} ใช้ม่านบาเรียไม่ได้? (ไม่เลือก = ไม่ใช้)` });
@@ -1505,6 +1548,7 @@ class Game {
     let amount = 1;
     if (this.solarActive(user)) { amount = 2; this.log(`☀ ${SKILLS.solar.name}: ศรเวทของ ${user.name} ทำความเสียหาย 2`); }
     if (this.valorActive(user)) amount++;
+    if (this.hasSkill(user, 'abyssal_blade')) amount++;
     if (this.hasSkill(user, 'dolorous') && user.hp > 1 && amount < 3 &&
       (await this.confirm(user, 'dolorous', `${SKILLS.dolorous.name}: สละเลือด 1 เพื่อให้การโจมตีนี้ทำความเสียหาย 3?`, 'สละเลือด', 'ไม่', { targetSeat: t.seat }))) {
       this.log(`🩸 ${user.name} ใช้ทักษะ ${SKILLS.dolorous.name}!`);
@@ -1512,6 +1556,10 @@ class Game {
       amount = 3;
     }
     const dealt = await this.damage(user, t, amount, v, flame ? 'fire' : null, { ignoreArmor });
+    if (dealt > 0 && this.hasSkill(user, 'bloodlust') && user.alive && user.hp < user.maxHp) {
+      this.log(`🩸 ${user.name} ใช้ทักษะ ${SKILLS.bloodlust.name}`);
+      this.heal(user, 1, null);
+    }
     if (dealt > 0 && this.hasSkill(user, 'venom') && t.alive) {
       t.poisonedBy = user.seat;
       this.log(`☠ ${t.name} ติดพิษของ ${user.name} (ใช้น้ำอมฤตไม่ได้จนจบเทิร์นของ ${user.name})`);
@@ -1537,7 +1585,7 @@ class Game {
         sourceSeat: other.seat, reason: 'duel',
       });
       if (!c) {
-        await this.damage(other, cur, 1, v);
+        await this.damage(other, cur, this.decree === 'trial_by_combat' ? 2 : 1, v);
         return;
       }
       [cur, other] = [other, cur];
@@ -1798,6 +1846,14 @@ class Game {
       this.ts.damaged = true;
       if (this.ts.vow === 'mercy') this.checkVow(source, [target], true);
     }
+    if (nature === 'fire' && target.boons && target.boons.dragonflame) {
+      this.log(`เกล็ดมังกรเพลิงของ ${target.name} ทำให้ไฟไม่ระคายผิว`);
+      return 0;
+    }
+    if (amount >= 2 && this.hasSkill(target, 'iron_hide')) {
+      amount--;
+      this.log(`${target.name} ใช้ทักษะ ${SKILLS.iron_hide.name} ลดความเสียหายลง 1`);
+    }
     if (nature && this.armorKey(target) === 'dragonscale' && !opts.ignoreArmor) {
       amount--;
       this.log(`${CARD_INFO.dragonscale.name} ของ ${target.name} ลดความเสียหายลง 1`);
@@ -1839,6 +1895,7 @@ class Game {
     await this.pause(800);
     if (this.hasSkill(target, 'berserk')) { this.draw(target, amount); this.log(`${target.name} ใช้ทักษะ ${SKILLS.berserk.name} จั่ว ${amount} ใบ`); }
     if (target.hp <= 0) await this.dying(target, source);
+    if (this.adv) await this.afterDamageAdvanced(source, target, amount);
     if (!target.alive) return amount;
 
     if (this.hasSkill(target, 'retribution') && v && v.real.length) {
@@ -1912,7 +1969,7 @@ class Game {
     target.poisonedBy = null;
     target.sealTurns = 0;
     target.spectral = [...SPECTRAL_ORDER];
-    this.log(`☠️ ${target.name} (${HEROES[target.hero].name}) สิ้นชีพ — บทบาท: ${ROLES[target.role].name} · กลายเป็นวิญญาณแห่งอวาลอน 👻`);
+    this.log(`☠️ ${target.name} (${this.heroName(target)}) สิ้นชีพ — บทบาท: ${ROLES[target.role].name} · กลายเป็นวิญญาณแห่งอวาลอน 👻`);
     this.emit('death', { target, source });
     const all = [...target.hand, ...this.equipCards(target), ...target.judgeZone];
     target.hand = [];
@@ -1923,6 +1980,7 @@ class Game {
     this.update();
     await this.pause(1400);
     this.checkVictory();
+    if (this.adv) await this.onDeathAdvanced(target, source);
     if (target.role === 'rebel') await this.moveTrack(2, `การล่มสลายของ ${target.name} (ลัทธิเงามืด)`);
     else if (target.role === 'loyalist') await this.moveTrack(-1, `การพลีชีพของ ${target.name} (อัศวินผู้ภักดี)`);
     if (source && source.alive) {
@@ -2027,7 +2085,9 @@ class Game {
         handCount: p.hand.length,
         equip: Object.fromEntries(Object.entries(p.equip).map(([k, c]) => [k, strip(c)])),
         judge: p.judgeZone.map(strip),
-        role: over || p === me || p.role === 'lord' || !p.alive ? p.role : null,
+        role: over || p === me || p.role === 'lord' || !p.alive || p.revealed ? p.role : null,
+        awakened: p.awakened,
+        destiny: p.dest && (p.dest.done || over) ? p.dest.id : null,
         distance: me && me.alive && p.alive && p !== me ? this.distance(me, p) : null,
         inRange: me && me.alive && p.alive && p !== me ? this.inAttackRange(me, p) : false,
         status: {
@@ -2045,8 +2105,11 @@ class Game {
         : { seat: e.p.seat, title: e.req.title, deadline: e.req.deadline })),
       prompt: pe ? pe.req : null,
       result: this.result,
+      adv: this.advancedView(me),
     };
   }
 }
+
+require('./advanced').install(Game, { strip, GameOver, ZONES, adjacentZones });
 
 module.exports = { Game, ROLE_TABLE, ZONES, RING, WEAVES, RUNES, VOWS, SPECTRAL, zoneDistance, adjacentZones, judgeGood, GameOver, GameAborted };

@@ -61,6 +61,18 @@ const SKILLS = {
   cacophony: { name: 'เสียงเพรียกกลืนวิญญาณ', en: 'Barking Cacophony', desc: 'ช่วงเริ่มเทิร์น ผู้เล่นทุกคนในระยะ 1 ต้องสุ่มทิ้งการ์ดในมือ 1 ใบ มิฉะนั้นคุณจั่วการ์ด 1 ใบต่อคนที่ไม่ทิ้ง' },
   rend: { name: 'กัดขย้ำเกราะเวท', en: 'Rend Armor', desc: 'เมื่อ "ศรเวท" ของคุณโจมตีโดน ทำลายการ์ดยุทโธปกรณ์ 1 ชิ้นของเป้าหมาย' },
 
+  // ── ทักษะด้านมืด (ปลุกเมื่อจุติ) ──
+  abyssal_blade: { name: 'ดาบห้วงเหว', en: 'Abyssal Blade', dark: true, desc: 'ใช้ "ศรเวท" ได้ไม่จำกัดครั้ง ทุกศรเวททำความเสียหาย +1 แต่ทุกครั้งที่ใช้ศรเวท คุณเสียเลือด 1' },
+  chrono_ruin: { name: 'ย้อนกาลล่มสลาย', en: 'Chronomancy of Ruin', dark: true, active: true, desc: 'ช่วงร่ายเวท (1 ครั้ง/เทิร์น) บังคับผู้เล่น 1 คนทิ้งการ์ดทุกใบที่เขาจั่วมาในช่วงเบิกมนตราล่าสุดและยังอยู่ในมือ' },
+  dark_nova: { name: 'ระเบิดทมิฬ', en: 'Dark Nova', dark: true, active: true, desc: 'ช่วงร่ายเวท (1 ครั้ง/เทิร์น) เสียเลือด 1 แล้วผู้เล่นอื่นทุกคนในระยะ 1 ได้รับความเสียหาย 1 (ไม่เลือกหน้า)' },
+  hex_storm: { name: 'พายุคำสาป', en: 'Hex Storm', dark: true, active: true, desc: 'ช่วงร่ายเวท (1 ครั้ง/เทิร์น) ทิ้งการ์ด 1 ใบ แล้วผู้เล่นอื่นทุกคนสุ่มทิ้งการ์ดในมือ 1 ใบ' },
+  soul_reap: { name: 'เก็บเกี่ยววิญญาณ', en: 'Soul Reaping', dark: true, desc: 'เมื่อผู้เล่นอื่นสิ้นชีพ ฟื้นฟูเลือด 1 และจั่วการ์ด 2 ใบ' },
+  vampiric: { name: 'ดูดพลังชีวิต', en: 'Vampiric Hunger', dark: true, desc: 'ทุกครั้งที่ทำความเสียหายแก่ผู้เล่นอื่น จั่วการ์ด 1 ใบ' },
+  bloodlust: { name: 'กระหายเลือด', en: 'Bloodlust', dark: true, desc: 'เมื่อ "ศรเวท" ของคุณทำความเสียหาย ฟื้นฟูเลือด 1' },
+  fury: { name: 'โทสะคลั่ง', en: 'Fury', dark: true, desc: 'ใช้ "ศรเวท" ได้เพิ่ม 1 ครั้งต่อเทิร์น และระยะโจมตี +1' },
+  tyrant_aura: { name: 'ออร่าทรราช', en: 'Tyrant Aura', dark: true, desc: 'ผู้เล่นในระยะ 1 ใช้ "ม่านบาเรีย" ป้องกัน "ศรเวท" ของคุณไม่ได้' },
+  iron_hide: { name: 'หนังเหล็ก', en: 'Iron Hide', dark: true, desc: 'ความเสียหายตั้งแต่ 2 หน่วยขึ้นไปที่คุณได้รับ ลดลง 1' },
+
   // ── ร่ายมนตร์ผสาน (ทุกฮีโร่ฝ่ายอวาลอน) ──
   overcharge: { name: 'ร่ายมนตร์ผสาน', en: 'Spell Overcharge', desc: '(จอมเวทแห่งอวาลอน) ผสานรูนเป็นมหาเวทได้ 2 ครั้งต่อเทิร์น (ปกติ 1 ครั้ง) และการผสานไม่นับโควตาการโจมตี' },
 };
@@ -99,4 +111,33 @@ const HEROES = {
 // กษัตริย์เลือกได้จาก อาเธอร์ + ฮีโร่สุ่มอีก 3 ตัว
 const LORD_HEROES = ['arthur'];
 
-module.exports = { KINGDOMS, ROLES, SKILLS, HEROES, LORD_HEROES };
+// ── ด้านมืดแปดเปื้อน (การ์ดฮีโร่สองหน้า) — ทักษะด้านมืดแทนที่ทักษะด้านสว่างทั้งหมดเมื่อจุติ ──
+const DARK = {
+  arthur: { name: 'ราชันย์ทรราช', en: 'The Tyrant King', skills: ['tyrant_aura', 'sword_stone'] },
+  lancelot: { name: 'ดาบแห่งห้วงเหว', en: 'The Abyssal Blade', skills: ['abyssal_blade', 'berserk'] },
+  gawain: { name: 'สุริยันแผดเผา', en: 'The Scorching Sun', skills: ['solar', 'bloodlust'] },
+  bedivere: { name: 'แขนเหล็กคลั่ง', en: 'The Iron Frenzy', skills: ['fury', 'iron_hide'] },
+  kay: { name: 'เสนาบดีละโมบ', en: 'The Greedy Seneschal', skills: ['vampiric', 'hex_storm'] },
+  gareth: { name: 'อัศวินคำสัตย์แตกสลาย', en: 'The Broken Oath', skills: ['bloodlust', 'iron_hide'] },
+  guinevere: { name: 'ราชินีหนาม', en: 'The Thorn Queen', skills: ['soul_curse', 'hex_storm'] },
+  mordred: { name: 'ราชันย์กบฏ', en: 'The Usurper Crowned', skills: ['venom', 'fury'] },
+  morgan: { name: 'จอมเวทแห่งราตรีนิรันดร์', en: 'The Night Eternal', skills: ['hex_storm', 'soul_reap'] },
+  agravain: { name: 'มีดสั้นกระซิบพิษ', en: 'The Venom Whisper', skills: ['venom', 'vampiric'] },
+  black_knight: { name: 'ป้อมปราการอมตะ', en: 'The Undying Fortress', skills: ['retribution', 'iron_hide'] },
+  lot: { name: 'ขุนศึกทมิฬ', en: 'The Dark Warlord', skills: ['fury', 'dark_nova'] },
+  balin: { name: 'ดาบคู่ต้องสาป', en: 'The Cursed Twinblade', skills: ['twinfang', 'dolorous', 'bloodlust'] },
+  morgause: { name: 'แม่มดทอชะตา', en: 'The Fate Hag', skills: ['soul_reap', 'hex_storm'] },
+  merlin: { name: 'จอมเวทล้างกาลเวลา', en: 'The Chronomancer of Ruin', skills: ['chrono_ruin', 'dark_nova'] },
+  nimue: { name: 'ราชินีวังวน', en: 'The Maelstrom Queen', skills: ['watery_grave', 'dark_nova'] },
+  viviane: { name: 'นักบวชหมอกมรณะ', en: 'The Death-Mist Priestess', skills: ['veil', 'soul_reap'] },
+  tristan: { name: 'ศรโศกา', en: 'The Sorrow Arrow', skills: ['volley', 'vampiric'] },
+  isolde: { name: 'ยาพิษรักร้าง', en: 'The Poisoned Philter', skills: ['venom', 'soul_curse'] },
+  taliesin: { name: 'กวีเพลงมรณะ', en: 'The Dirge Bard', skills: ['hex_storm', 'vampiric'] },
+  galahad: { name: 'ผู้พิพากษาเพลิง', en: 'The Burning Judge', skills: ['dark_nova', 'iron_hide'] },
+  percival: { name: 'อัศวินคลั่งศรัทธา', en: 'The Zealot', skills: ['fury', 'bloodlust'] },
+  bors: { name: 'ผู้บำเพ็ญโลหิต', en: 'The Blood Ascetic', skills: ['bloodlust', 'iron_hide'] },
+  green_knight: { name: 'ยักษ์พงไพรคลั่ง', en: 'The Wild Colossus', skills: ['challenge', 'iron_hide'] },
+  questing_beast: { name: 'อสูรหิวกระหาย', en: 'The Ravenous Chimera', skills: ['rend', 'vampiric'] },
+};
+
+module.exports = { KINGDOMS, ROLES, SKILLS, HEROES, LORD_HEROES, DARK };

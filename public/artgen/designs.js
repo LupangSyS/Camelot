@@ -7,7 +7,7 @@
   'use strict';
 
   const { Canvas, hash, rng, rgb, mix, shade, clamp01, smooth, makeNoise, spline, bezier, transform, linear, radial, lit, textured } = R;
-  const VERSION = 3;
+  const VERSION = 4;
 
   // ขนาดภาพจริง (พิกเซล) และตัวคูณ supersampling ตอนวาด
   const SPECS = {
@@ -632,6 +632,87 @@
     vignette(cv, 0.4);
   });
 
+  // ═══════════════════════ ภัยพิบัติแห่งบริทาเนีย ═══════════════════════
+  const THREAT = {};
+  THREAT.dragon = (cv, seed) => {
+    sky(cv, seed, 'abyss', { clouds: 0.5, stars: 30 });
+    hills(cv, seed, 196, 24, '#1a0808');
+    castle(cv, 60, 200, 0.7, '#140606', 1, '#ff7030');
+    figure(cv, (L) => {
+      const scale = (x, y) => {
+        const base = mix('#6a0c0c', '#d0401a', clamp01((x - 170) / 80));
+        const sx = x / 8; const sy = y / 6 + (Math.floor(x / 8) % 2) * 0.5;
+        const f = Math.abs((sx - Math.floor(sx)) - 0.5) + Math.abs((sy - Math.floor(sy)) - 0.5);
+        return shade(base, f > 0.72 ? -0.3 : 0.04);
+      };
+      L.curve([[250, 210], [210, 170], [190, 120], [170, 80]], 42, scale, 1, undefined, 26);
+      L.blob([[150, 60], [180, 44], [214, 50], [226, 70], [206, 84], [174, 92], [150, 84]], lit('#b01818', [150, 44, 76, 48], { spec: 0.4 }));
+      L.blob([[150, 80], [120, 96], [110, 108], [140, 104], [170, 92]], '#5a0808');
+      for (let i = 0; i < 5; i++) L.poly([[122 + i * 9, 96 - i * 2], [126 + i * 9, 104 - i * 2], [130 + i * 9, 95 - i * 2]], '#f4ecd0');
+      L.poly([[190, 48], [206, 14], [212, 50]], '#3a1a10');
+      L.poly([[176, 48], [178, 20], [190, 48]], '#3a1a10');
+      L.poly([[214, 74], [256, 40], [256, 110]], lit('#6a0a0a', [214, 40, 42, 70]));
+    }, { rim: '#ff8030', rimA: 0.9 });
+    glow(cv, 5, 1.5, (L) => L.ellipse(186, 62, 6, 3.5, '#ffe040'));
+    glow(cv, 14, 1.2, (L) => L.poly([[118, 100], [10, 150], [0, 200], [30, 208], [120, 110]], '#ff8a20'));
+    cv.poly([[118, 100], [20, 150], [10, 190], [120, 108]], radial(118, 104, 120, ['#fff4c0', '#ffb030', '#ff4010']), 0.85);
+    vignette(cv, 0.45);
+  };
+  THREAT.saxons = (cv, seed) => {
+    sky(cv, seed, 'storm', { clouds: 0.6 });
+    glow(cv, 20, 0.8, (L) => L.ellipse(128, 190, 150, 30, '#ff5a1a'));
+    hills(cv, seed, 180, 20, '#1a1010');
+    const r = rng(seed);
+    for (let i = 0; i < 18; i++) {
+      const x = 8 + i * 14 + (r() - 0.5) * 6; const y = 176 + r() * 10; const sc = 0.8 + r() * 0.4;
+      cv.circle(x, y - 26 * sc, 5 * sc, '#140c0c');
+      cv.poly([[x - 8 * sc, y + 20], [x - 6 * sc, y - 20 * sc], [x + 6 * sc, y - 20 * sc], [x + 8 * sc, y + 20]], '#140c0c');
+      cv.line(x + 7 * sc, y + 10, x + 10 * sc, y - 60 * sc, 1.6, '#2a1a14');
+      cv.poly([[x + 10 * sc, y - 60 * sc], [x + 8 * sc, y - 52 * sc], [x + 12 * sc, y - 52 * sc]], '#b8b8c0');
+      if (i % 4 === 1) glow(cv, 6, 1, (L) => L.circle(x - 10 * sc, y - 34 * sc, 4, '#ffb040'));
+    }
+    cv.poly([[20, 120], [20, 60], [60, 70], [20, 80]], '#8a1a14');
+    cv.line(20, 190, 20, 58, 2, '#3a2010');
+    vignette(cv, 0.45);
+  };
+  THREAT.wild_hunt = (cv, seed) => {
+    sky(cv, seed, 'night', { clouds: 0.5, stars: 60, moon: [200, 50, 24, '#dff4ff'] });
+    trees(cv, seed, 208, 14, '#081410', 90);
+    const rider = (x, y, s, a) => {
+      glow(cv, 8, 0.8 * a, (L) => L.ellipse(x, y, 40 * s, 24 * s, '#7fffd0'));
+      cv.blob(transform([[-30, 0], [-10, -12], [24, -10], [36, 0], [30, 14], [-26, 12]], { x, y, s }), '#9fffe0', 0.5 * a);
+      cv.blob(transform([[-4, -12], [0, -40], [8, -40], [10, -12]], { x, y, s }), '#bfffea', 0.6 * a);
+      cv.line(x + 4 * s, y - 40 * s, x - 8 * s, y - 62 * s, 1.5, '#dfffee', 0.7 * a);
+      cv.line(x + 4 * s, y - 40 * s, x + 16 * s, y - 62 * s, 1.5, '#dfffee', 0.7 * a);
+    };
+    rider(70, 120, 1.1, 1); rider(150, 100, 0.8, 0.8); rider(210, 140, 0.9, 0.9);
+    for (let i = 0; i < 5; i++) { const x = 40 + i * 40; glow(cv, 3, 1, (L) => L.line(x, 40 + i * 8, x + 30, 70 + i * 8, 1.4, '#bfffe8')); }
+    mistBand(cv, seed, 200, 30, '#9fe8d0', 0.5);
+    vignette(cv, 0.5);
+  };
+  THREAT.blight = (cv, seed) => {
+    sky(cv, seed, 'forest', { clouds: 0.5 });
+    cv.fill(() => [90, 110, 30, 0.35], 'multiply');
+    hills(cv, seed, 190, 24, '#2a2414');
+    const tree = (x, y, s) => {
+      cv.line(x, y, x - 4 * s, y - 70 * s, 7 * s, '#1a140c', 1, undefined, 3 * s);
+      for (const [a, l] of [[-0.8, 40], [0.6, 36], [-0.3, 30], [1.1, 26]]) cv.curve([[x - 3 * s, y - 50 * s], [x + Math.sin(a) * l * 0.6 * s, y - (50 + l * 0.5) * s], [x + Math.sin(a) * l * s, y - (58 + l * 0.8) * s]], 2.4 * s, '#1a140c', 1, undefined, 0.5);
+    };
+    tree(70, 200, 1.4); tree(190, 196, 1.1);
+    mistBand(cv, seed, 170, 50, '#b8e060', 0.7);
+    const r = rng(seed);
+    for (let i = 0; i < 20; i++) cv.circle(r() * 256, 120 + r() * 80, 1 + r() * 2, '#d8ff70', 0.6);
+    vignette(cv, 0.5);
+  };
+
+  function renderThreat(id) {
+    const draw = THREAT[id];
+    if (!draw) throw new Error(`no design for threat ${id}`);
+    const cv = new Canvas(CW, CH, SPECS.cards.k);
+    draw(cv, hash(`threat:${id}`));
+    return cv;
+  }
+
   function renderCard(key) {
     const draw = CARD[key];
     if (!draw) throw new Error(`no design for card ${key}`);
@@ -1251,16 +1332,55 @@
     vignette(cv, 0.5);
   }
 
-  function renderHero(id) {
+  /** ปรับโทนเป็นด้านมืดแปดเปื้อน */
+  function corrupt(h0) {
+    const h = { ...h0, dark: true, scene: 'corrupt', halo: null };
+    const taint = (c, k = 0.45) => (c ? mix(shade(c, -0.35), '#3a0a2a', k) : c);
+    h.main = taint(h.main); h.trim = '#c01838'; h.cape = h.cape ? '#1a0610' : null;
+    h.hat = taint(h.hat); h.hood = taint(h.hood); h.veil = taint(h.veil, 0.3);
+    h.hair = taint(h.hair, 0.3); h.beardColor = taint(h.beardColor, 0.3);
+    const sk = SKIN[h.skin] || h.skin;
+    if (sk) h.skin = mix(shade(sk, -0.12), '#8a8aa0', 0.35);
+    h.eyes = '#ff2a1a';
+    h.orb = '#ff2a6a';
+    if (h.visor) h.visor = '#b030ff';
+    return h;
+  }
+
+  function darkAura(cv, seed) {
+    const r = rng(seed + 77);
+    glow(cv, 26, 1, (L) => L.ellipse(HX, HY + 40, 110, 120, '#6a0a3a', 0.9));
+    const noise = makeNoise(seed + 5);
+    for (let i = 0; i < 16; i++) {
+      const x = 20 + r() * 216; const h = 60 + r() * 120;
+      const pts = [];
+      for (let k = 0; k <= 10; k++) { const t = k / 10; pts.push([x + (noise.n2(i, t * 3) - 0.5) * 30 * t, 256 - h * t]); }
+      glow(cv, 5, 0.7, (L) => L.stroke(pts, 6, i % 3 ? '#b0104a' : '#7a20c0', 1, undefined, 1));
+    }
+  }
+
+  function renderHero(id, dark) {
     const h0 = HERO[id];
     if (!h0) throw new Error(`no design for hero ${id}`);
-    const h = { ...h0, id };
+    const h = dark ? { ...corrupt(h0), id } : { ...h0, id };
     const S = SPECS.heroes;
     const cv = new Canvas(S.w, S.h, S.k);
     const seed = hash(`hero:${id}`);
-    if (h.beast) { questingBeast(cv, seed); return cv; }
-    heroScene(cv, h, seed);
-    const fx = FACTION[h.f];
+    if (h.beast) {
+      questingBeast(cv, seed);
+      if (dark) {
+        cv.fill(() => [120, 20, 70, 0.45], 'multiply');
+        glow(cv, 6, 1.4, (L) => L.ellipse(178, 80, 10, 6, '#ff1a4a'));
+        darkAura(cv, seed);
+        vignette(cv, 0.6);
+      }
+      return cv;
+    }
+    if (dark) {
+      sky(cv, seed, 'abyss', { clouds: 0.6, stars: 20, moon: [196, 48, 20, '#ff3a2a'], eclipse: true });
+      darkAura(cv, seed);
+    } else heroScene(cv, h, seed);
+    const fx = dark ? { glow: '#ff2a5a' } : FACTION[h.f];
     if (h.halo) {
       glow(cv, 20, 1, (L) => L.circle(HX, HY - 10, 70, h.halo, 0.8));
       const ring = spline(Array.from({ length: 12 }, (_, i) => [HX + Math.cos((i / 12) * TAU) * 62, HY - 12 + Math.sin((i / 12) * TAU) * 62]), true, 8);
@@ -1282,7 +1402,16 @@
     const F = cv.layer();
     frontItem(F, h);
     cv.draw(F);
-    vignette(cv, 0.5, 0.5, 0.42);
+    if (dark && !h.helm) {
+      // ดวงตาเรืองแสงแห่งความคลั่ง
+      glow(cv, 4, 1.6, (L) => { L.ellipse(HX - 15, HY + 2, 6, 3, '#ff2a1a'); L.ellipse(HX + 15, HY + 2, 6, 3, '#ff2a1a'); });
+      // รอยร้าวเรืองแดงบนแก้ม
+      glow(cv, 2, 1, (L) => {
+        L.curve([[HX - 30, HY - 20], [HX - 24, HY - 6], [HX - 28, HY + 8], [HX - 22, HY + 20]], 1.2, '#ff3a3a');
+        L.curve([[HX + 26, HY + 10], [HX + 20, HY + 22], [HX + 24, HY + 34]], 1.2, '#ff3a3a');
+      });
+    }
+    vignette(cv, dark ? 0.62 : 0.5, 0.5, 0.42);
     return cv;
   }
 
@@ -1375,11 +1504,13 @@
   function render(kind, id) {
     if (kind === 'cards') return renderCard(id).toImage();
     if (kind === 'heroes') return renderHero(id).toImage();
+    if (kind === 'dark') return renderHero(id, true).toImage();
+    if (kind === 'threats') return renderThreat(id).toImage();
     if (kind === 'misc' && id === 'back') return renderBack().toImage();
     if (kind === 'misc' && id === 'felt') return renderFelt().toImage();
     if (kind === 'misc' && id === 'table') return renderTable().toImage();
     throw new Error(`unknown art ${kind}/${id}`);
   }
 
-  return { VERSION, SPECS, CARD_KEYS: Object.keys(CARD), HERO_IDS: Object.keys(HERO), MISC_IDS: ['back', 'felt', 'table'], render, renderCard, renderHero, renderBack, renderFelt, renderTable };
+  return { VERSION, SPECS, CARD_KEYS: Object.keys(CARD), HERO_IDS: Object.keys(HERO), THREAT_IDS: Object.keys(THREAT), MISC_IDS: ['back', 'felt', 'table'], render, renderCard, renderHero, renderThreat, renderBack, renderFelt, renderTable };
 }));

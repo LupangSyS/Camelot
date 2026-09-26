@@ -48,11 +48,13 @@
       return `<p><b>${esc(sk.name)}</b>${sk.lord ? ' <span class="badge host">ประมุข</span>' : ''} ${esc(sk.desc.replace(/^\((สกิลประมุข|จอมเวทแห่งอวาลอน)\)\s*/, ''))}</p>`;
     }).join('');
     const pick = o.pick ? `pick" data-act="hero" data-id="${esc(id)}` : '';
+    const dk = M.dark && M.dark[id];
+    const dark = dk ? `<div class="cf-dark" title="เมื่อเลือดเหลือ 1 หรือนาฬิกาหายนะถึง -5 เลือกจุติด้านมืดได้ 1 ครั้ง"><b>🌑 ด้านมืด: ${esc(dk.name)}</b> <small>${esc(dk.en)}</small>${dk.skills.map((s2) => `<p><b>${esc(M.skills[s2].name)}</b> ${esc(M.skills[s2].desc)}</p>`).join('')}</div>` : '';
     return `<div class="hcf k-${h.kingdom} ${o.cls || ''} ${pick}">
       <div class="hcf-art"${bg(artUrl('heroes', id))}>${artUrl('heroes', id) ? '' : `<span>${esc(h.en[0])}</span>`}</div>
       <div class="cf-name">${esc(h.name)}<small class="cf-en">${esc(h.en)} · ${esc(h.title)}</small></div>
       <div class="cf-type">${esc(M.kingdoms[h.kingdom].icon)} ${esc(M.kingdoms[h.kingdom].name)} · ${h.gender === 'f' ? 'หญิง' : 'ชาย'} · <span class="hcf-hp">${'❤'.repeat(h.hp)}</span></div>
-      <div class="cf-text">${skills}</div></div>`;
+      <div class="cf-text">${skills}${o.pick ? '' : dark}</div></div>`;
   }
 
   root.CardFace = { card, hero, typeLine, TYPE };

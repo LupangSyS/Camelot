@@ -10,7 +10,7 @@ const bots = (n) => Array.from({ length: n }, (_, i) => ({ pid: `p${i}`, name: `
 const card = (g, key, suit) => [...g.cardById.values()].find((c) => c.key === key && (!suit || c.suit === suit) && !g.players.some((p) => p.hand.includes(c)));
 
 function setup(n = 5, hero = 'kay') {
-  const g = new Game({ players: bots(n), botDelay: 0 });
+  const g = new Game({ players: bots(n), botDelay: 0, advanced: false });
   g.players.forEach((p) => g.setHero(p, hero, true));
   g.ts = { player: g.players[0], attacksUsed: 0, usedAttack: false, used: new Set(), weaves: 0, moved: false, vow: null, vowBroken: false, bardic: new Map() };
   return g;
