@@ -368,6 +368,54 @@ const L = {
     any: ['ขยับตำแหน่งหน่อย', 'โซนนี้ดูปลอดภัยกว่า', 'ข้าจะไปยืนตรงนั้น'],
   },
 
+  // ── ระบบขั้นสูง ──
+  voteFor: {
+    lord: ['พระราชกำหนดนี้เพื่อคาเมลอต จงเห็นชอบ!', 'ใครโหวตดำ ข้าจะจำไว้'],
+    loyal: ['หินขาว! เพื่อฝ่าบาท ⚪', 'ข้าเห็นชอบตามพระราชกำหนด'],
+    fake: ['ข้าก็เห็นชอบนะ... แน่นอน 😇', 'หินขาวสำหรับฝ่าบาท (ยิ้ม)'],
+    rebel: ['ครั้งนี้ข้าเห็นด้วย... อย่าเพิ่งดีใจไป'],
+    traitor: ['ขาวก็ได้ สำหรับตอนนี้'],
+  },
+  voteAgainst: {
+    lord: ['สภานี้ขัดข้าอีกแล้วรึ'],
+    loyal: ['ข้าไม่เห็นด้วยกับพระราชกำหนดนี้ ขออภัยฝ่าบาท'],
+    fake: ['ข้าแค่คิดว่ามันไม่ยุติธรรมกับทุกคน... ⚫', 'หินดำเพื่อประชาชน (ไม่ใช่เพื่อข้า)'],
+    rebel: ['หินดำ! ไม่มีวันยอมให้ทรราช ⚫', 'พระราชกำหนดขยะ!'],
+    traitor: ['⚫ ข้าชอบให้ทุกอย่างสมดุล'],
+  },
+  sawVoteBlack: {
+    lord: ['{s} โหวตดำ... ข้าเห็นนะ', 'จดชื่อ {s} ไว้'],
+    loyal: ['{s} ค้านฝ่าบาททำไม น่าสงสัย!', 'ดูสิ {s} ลงหินดำ'],
+    fake: ['{s} ใจกล้าจัง ข้าไม่กล้าค้านฝ่าบาทหรอก 😏'],
+    rebel: ['ดีมาก {s}'],
+    traitor: ['{s} เปิดไพ่เร็วไปนะ'],
+  },
+  awaken: {
+    any: ['🌑 ความมืดในใจข้าตื่นขึ้นแล้ว!', 'ข้าไม่ใช่คนเดิมอีกต่อไป...', 'พลังนี้... ช่างหอมหวาน', 'จงหวาดกลัวด้านมืดของข้า!'],
+  },
+  sawAwaken: {
+    any: ['{s} กลายเป็นอะไรไปแล้วนั่น 😨', 'ระวัง! {s} จุติด้านมืดแล้ว', 'ตาแดงก่ำเลย {s}...'],
+  },
+  rite: {
+    traitor: ['👑 บัลลังก์นี้เป็นของข้า! หยุดข้าให้ได้สิ', 'ในที่สุดก็ถึงเวลาถอดหน้ากาก!'],
+  },
+  sawRite: {
+    any: ['ผู้แฝงตัว! ชิงดาบคืนมาเร็ว!', 'หยุด {s} ก่อนครบรอบ!', 'ทำลายเอ็กซ์คาลิเบอร์ในมือ {s} ให้ได้!', 'ทุกคนรวมพลัง! {s} จะยึดบัลลังก์!'],
+  },
+  threat: {
+    lord: ['ทุกคนร่วมมือกันก่อน! ภัยพิบัติมาแล้ว', 'อัศวินทั้งหลาย ปกป้องคาเมลอต!'],
+    loyal: ['สู้กับมันก่อน แล้วค่อยว่ากันเรื่องกบฏ!', 'ช่วยกันหน่อย ทุกคน!'],
+    fake: ['โอ้ย น่ากลัวจัง... ใครสู้ก่อนเลยนะ 😅', 'ข้าจะช่วย... เดี๋ยวนะ'],
+    rebel: ['ปล่อยให้มันเผาพวกอัศวินไปก่อนสิ 😈', 'ภัยพิบัติก็เป็นพันธมิตรได้นะ'],
+    traitor: ['ความโกลาหลช่างงดงาม'],
+  },
+  threatSlain: {
+    any: ['เยี่ยมมาก {s}!', '{s} วีรบุรุษแห่งคาเมลอต!', 'ขอบคุณ {s} ที่ปิดฉากมัน'],
+  },
+  destiny: {
+    any: ['🌟 ลิขิตชะตาของข้าสำเร็จแล้ว!', 'โชคชะตาอยู่ข้างข้า', 'ภารกิจลับของข้าลุล่วง ฮ่าๆ'],
+  },
+
   // ── วิญญาณแห่งอวาลอน ──
   ghostDeath: {
     ghost: ['👻 ข้าจะเฝ้ามองจากอวาลอน...', '👻 ความตายไม่ใช่จุดจบ', '👻 ข้ายังอยู่ที่โต๊ะนี้นะ'],
@@ -594,6 +642,37 @@ class Banter {
         break;
       case 'move':
         if (source.isBot) this.say(out, g, source, 'moved', {}, 0.08);
+        break;
+      case 'vote':
+        for (const { p, v } of ev.votes || []) {
+          if (p.isBot && this.rnd() < 0.15) this.say(out, g, p, v === 'white' ? 'voteFor' : 'voteAgainst', {}, 1);
+        }
+        {
+          const blacks = (ev.votes || []).filter((x) => x.v === 'black').map((x) => x.p);
+          const w = blacks.length && some(bots.filter((q) => !blacks.includes(q)), 1)[0];
+          if (w) this.say(out, g, w, 'sawVoteBlack', { s: blacks[0] }, 0.35);
+        }
+        break;
+      case 'awaken': {
+        if (source.isBot) this.say(out, g, source, 'awaken', {}, 0.8, true);
+        const w = some(bots.filter((q) => q !== source), 1)[0];
+        if (w) this.say(out, g, w, 'sawAwaken', { s: source }, 0.5);
+        break;
+      }
+      case 'rite':
+        if (source.isBot) this.say(out, g, source, 'rite', {}, 1, true);
+        for (const q of some(bots.filter((x) => x !== source), 2)) this.say(out, g, q, 'sawRite', { s: source }, 0.9, true);
+        break;
+      case 'threat':
+        for (const q of some(bots, 2)) this.say(out, g, q, 'threat', {}, 0.6, true);
+        break;
+      case 'threatSlain': {
+        const w = some(bots.filter((q) => q !== source), 1)[0];
+        if (w) this.say(out, g, w, 'threatSlain', { s: source }, 0.6, true);
+        break;
+      }
+      case 'destiny':
+        if (source.isBot) this.say(out, g, source, 'destiny', {}, 0.7, true);
         break;
       case 'whisper':
         if (source.isBot) this.say(out, g, source, 'ghostWhisper', { t: target }, 0.7, true);

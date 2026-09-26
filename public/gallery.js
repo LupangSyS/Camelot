@@ -17,6 +17,8 @@ function slots() {
   const { db } = S;
   if (S.tab === 'heroes') return Object.entries(db.heroes).map(([id, h]) => ({ kind: 'heroes', id, h }));
   if (S.tab === 'cards') return Object.entries(db.cards).map(([id, c]) => ({ kind: 'cards', id, c }));
+  if (S.tab === 'dark') return Object.entries(db.dark || {}).map(([id, d]) => ({ kind: 'dark', id, d }));
+  if (S.tab === 'threats') return Object.entries(db.threats || {}).map(([id, t]) => ({ kind: 'threats', id, t }));
   return [{ kind: 'misc', id: 'back' }, { kind: 'misc', id: 'table' }, { kind: 'misc', id: 'felt' }];
 }
 
@@ -24,6 +26,7 @@ const artUrl = (kind, id) => { const u = S.manifest.items[`${kind}/${id}`]; retu
 
 function faceHTML(sl) {
   if (sl.kind === 'heroes') return CardFace.hero(S.db, artUrl, sl.id);
+  if (sl.kind === 'dark' || sl.kind === 'threats') return `<img src="${esc(artUrl(sl.kind, sl.id))}" alt="${esc(sl.id)}" style="width:${sl.kind === 'dark' ? 200 : 220}px;border-radius:10px">`;
   if (sl.kind === 'cards') {
     const first = (S.db.deck[sl.id] || [])[0] || {};
     return CardFace.card(S.db, artUrl, { key: sl.id, suit: first.suit, rank: first.rank });
@@ -38,6 +41,11 @@ function metaHTML(sl) {
     const h = sl.h;
     return `<b>${esc(h.name)}</b><span class="cn">${esc(h.en)}</span><div class="sub">${esc(h.title)} · ${esc(db.kingdoms[h.kingdom].icon)} ${esc(db.kingdoms[h.kingdom].name)} · ${h.gender === 'f' ? 'หญิง' : 'ชาย'} · เลือด ${h.hp}</div>`;
   }
+  if (sl.kind === 'dark') {
+    const d = sl.d;
+    return `<b>🌑 ${esc(d.name)}</b><span class="cn">${esc(d.en)}</span><div class="sub">ด้านมืดของ ${esc(db.heroes[sl.id].name)}</div>${d.skills.map((k) => `<p><b>${esc(db.skills[k].name)}</b> ${esc(db.skills[k].desc)}</p>`).join('')}`;
+  }
+  if (sl.kind === 'threats') return `<b>🐉 ${esc(sl.t.name)}</b><span class="cn">${esc(sl.t.en)}</span><p>${esc(sl.t.desc)}</p>`;
   if (sl.kind === 'cards') {
     const c = sl.c;
     const copies = db.deck[sl.id] || [];
@@ -64,11 +72,13 @@ function render() {
     <div class="tabs">
       <button class="btn sm ${S.tab === 'heroes' ? 'on' : ''}" data-tab="heroes">ฮีโร่ (${Object.keys(db.heroes).length})</button>
       <button class="btn sm ${S.tab === 'cards' ? 'on' : ''}" data-tab="cards">การ์ด (${Object.keys(db.cards).length})</button>
+      <button class="btn sm ${S.tab === 'dark' ? 'on' : ''}" data-tab="dark">ด้านมืด (${Object.keys(db.dark || {}).length})</button>
+      <button class="btn sm ${S.tab === 'threats' ? 'on' : ''}" data-tab="threats">ภัยพิบัติ (${Object.keys(db.threats || {}).length})</button>
       <button class="btn sm ${S.tab === 'misc' ? 'on' : ''}" data-tab="misc">หลังไพ่ & โต๊ะ (3)</button></div>
     <div class="items">${list.map((sl) => {
       const key = `${sl.kind}/${sl.id}`;
       const url = manifest.items[key];
-      const cls = sl.kind === 'heroes' ? 'hero-it' : sl.id === 'felt' ? 'felt-it' : sl.id === 'table' ? 'table-it' : 'card-it';
+      const cls = sl.kind === 'heroes' || sl.kind === 'dark' ? 'hero-it' : sl.id === 'felt' ? 'felt-it' : sl.id === 'table' ? 'table-it' : 'card-it';
       const chk = S.checks[key];
       return `<div class="item ${cls}">
         <div class="pics">${faceHTML(sl)}${url ? `<img hidden src="art/${esc(url)}" alt="" data-key="${esc(key)}">` : ''}${S.live ? `<canvas data-live="${esc(key)}" title="วาดใหม่สดในเบราว์เซอร์"></canvas>` : ''}</div>

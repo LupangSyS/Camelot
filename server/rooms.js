@@ -2,13 +2,15 @@
 
 const crypto = require('crypto');
 const { Game, ZONES, RING, WEAVES, RUNES, VOWS, SPECTRAL } = require('./game/engine');
+const { FACADES, CHAOS, DECREES, THREATS, DESTINIES } = require('./game/advanced');
 const { Banter } = require('./game/banter');
 const { CARD_INFO, SUIT_SYMBOL, RANK_STR, ELEMENTS } = require('./game/cards');
-const { HEROES, SKILLS, KINGDOMS, ROLES } = require('./game/heroes');
+const { HEROES, SKILLS, KINGDOMS, ROLES, DARK } = require('./game/heroes');
 
 const META = {
   cards: CARD_INFO, heroes: HEROES, skills: SKILLS, kingdoms: KINGDOMS, roles: ROLES, suits: SUIT_SYMBOL, ranks: RANK_STR,
   elements: ELEMENTS, zones: ZONES, ring: RING, weaves: WEAVES, runes: RUNES, vows: VOWS, spectral: SPECTRAL,
+  dark: DARK, facades: FACADES, chaos: CHAOS, decrees: DECREES, threats: THREATS, destinies: DESTINIES,
 };
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const BOT_NAMES = ['บอทเพลลินอร์', 'บอทลามอรัก', 'บอทเอคเตอร์', 'บอทอีเลน', 'บอทไลโอเนล', 'บอทดาโกเนต', 'บอทยูเธอร์', 'บอทเอนิด', 'บอทเจอเรนต์', 'บอทเพลเลียส'];
@@ -36,7 +38,7 @@ class RoomManager {
   }
 
   createRoom() {
-    const room = { code: this.newCode(), players: [], hostPid: null, status: 'lobby', game: null, chat: [], lastActive: Date.now(), timer: null };
+    const room = { code: this.newCode(), players: [], hostPid: null, status: 'lobby', game: null, chat: [], lastActive: Date.now(), timer: null, advanced: this.opts.advanced !== false };
     this.rooms.set(room.code, room);
     return room;
   }
@@ -107,6 +109,13 @@ class RoomManager {
       const used = new Set(room.players.map((p) => p.name));
       const name = BOT_NAMES.find((n) => !used.has(n)) || `บอท${room.players.length + 1}`;
       room.players.push({ pid: crypto.randomUUID(), token: null, name, isBot: true, connected: true, socketId: null });
+      this.broadcast(room);
+    });
+
+    on('setAdvanced', ({ on: value }) => {
+      const { room, pl } = this.lookup(token);
+      if (!room || room.hostPid !== pl.pid || room.status !== 'lobby') return;
+      room.advanced = !!value;
       this.broadcast(room);
     });
 
@@ -246,6 +255,7 @@ class RoomManager {
       botDelay: this.opts.botDelay ?? 900,
       pace: this.opts.pace ?? (this.opts.botDelay === 0 ? 0 : 1),
       timeouts: this.opts.timeouts,
+      advanced: room.advanced,
     });
     for (const p of room.players) if (!p.isBot && !p.connected) game.setConnected(p.pid, false);
     room.game = game;
@@ -284,6 +294,7 @@ class RoomManager {
         code: room.code,
         hostPid: room.hostPid,
         status: room.status,
+        advanced: room.advanced,
         players: room.players.filter((p) => !p.left || room.status !== 'lobby').map((p) => ({
           pid: p.pid, name: p.name, isBot: p.isBot, connected: p.connected, left: !!p.left,
         })),

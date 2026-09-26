@@ -40,7 +40,7 @@ test('all-bot games finish for every player count, with cards conserved', async 
       if (r.winnerRole === 'lord') assert.ok(!g.alive().some((p) => p.role === 'rebel' || p.role === 'traitor'));
       if (r.winnerRole === 'rebel') assert.ok(!g.players.find((p) => p.role === 'lord').alive || g.track <= -10, 'rebels win by regicide or eclipse');
       for (const p of g.players) if (!p.alive) assert.ok(p.ghost, 'the fallen become spectral knights');
-      if (r.winnerRole === 'traitor') assert.deepStrictEqual(g.alive().map((p) => p.role), ['traitor']);
+      if (r.winnerRole === 'traitor' && !r.text.includes('พิธีชิงมงกุฎ')) assert.deepStrictEqual(g.alive().map((p) => p.role), ['traitor']);
     }
   } finally {
     console.error = orig;
