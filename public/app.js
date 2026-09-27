@@ -29,7 +29,12 @@ socket.on('connect', () => { S.online = true; socket.emit('hello', { token }); r
 socket.on('disconnect', () => { S.online = false; render(); });
 socket.on('meta', (m) => { S.meta = m; render(); });
 fetch('art/manifest.json', { cache: 'no-cache' }).then((r) => r.json()).then((m) => { S.art = m.items || {}; render(); }).catch(() => {});
-socket.on('toast', (m) => toast(m));
+socket.on('toast', (m) => {
+  toast(m);
+  // คำตอบถูกปฏิเสธ: ปลดสถานะ "กำลังส่ง" ให้เลือกใหม่ได้ทันที
+  const pr = curPrompt();
+  if (pr && S.sel && S.sel.sent) { S.sel = newSel(pr); render(); }
+});
 socket.on('state', (st) => {
   S.offset = st.now - Date.now();
   const prevStatus = S.st && S.st.room && S.st.room.status;
@@ -117,11 +122,25 @@ function activeOpt() {
   if (!S.sel || !S.sel.opt) return null;
   return options().find((o) => o.id === S.sel.opt) || null;
 }
+/** การ์ดที่เลือกเพิ่มได้ตามเงื่อนไข pick — ผสานรูนต้องครบธาตุตามสูตร (เช่น ♠ + ♥) */
+function pickable(o) {
+  const pool = o.pick.pool;
+  if (!o.pick.suits) return new Set(pool);
+  const need = [...o.pick.suits];
+  const suitOf = (id) => { const c = findCard(id); return c && c.suit; };
+  for (const id of S.sel.cards) { const i = need.indexOf(suitOf(id)); if (i >= 0) need.splice(i, 1); }
+  return new Set(pool.filter((id) => S.sel.cards.includes(id) || need.includes(suitOf(id))));
+}
+function findCard(id) {
+  const g = G();
+  return [...(g.hand || []), ...g.players.flatMap((p) => Object.values(p.equip).filter(Boolean))].find((c) => c && c.id === id);
+}
+
 function selectableCards() {
   const pr = curPrompt();
   if (!pr || (pr.type !== 'play' && pr.type !== 'respond')) return new Set();
   const o = activeOpt();
-  if (o && o.pick) return new Set(o.pick.pool);
+  if (o && o.pick) return pickable(o);
   const s = new Set();
   for (const x of options()) if (x.cardIds) s.add(x.cardIds[0]);
   return s;
@@ -159,6 +178,7 @@ function onCard(id) {
   const o = activeOpt();
   if (o && o.pick) {
     if (!o.pick.pool.includes(id)) return;
+    if (!S.sel.cards.includes(id) && !pickable(o).has(id)) { toast('ต้องใช้การ์ดธาตุตามสูตรรูน'); return; }
     const i = S.sel.cards.indexOf(id);
     if (i >= 0) S.sel.cards.splice(i, 1);
     else if (S.sel.cards.length < o.pick.max) S.sel.cards.push(id);
@@ -200,6 +220,10 @@ function canConfirm() {
   const o = activeOpt();
   if (!o) return false;
   if (o.pick && (S.sel.cards.length < o.pick.min || S.sel.cards.length > o.pick.max)) return false;
+  if (o.pick && o.pick.suits) {
+    const got = S.sel.cards.map((id) => (findCard(id) || {}).suit).sort().join();
+    if (got !== [...o.pick.suits].sort().join()) return false;
+  }
   if (pr.type === 'play' && o.targets) {
     const n = S.sel.targets.length;
     if (n < o.targets.min || n > o.targets.max) return false;
