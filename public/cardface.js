@@ -69,7 +69,7 @@
         <div class="hc-names"><b>${esc(name)}</b><small>${esc(thName)}</small></div>
         <span class="hc-rar">${esc(rar ? rar.name : 'RARE')}</span></div>
       <div class="hc-art"${bg(art)}>${art ? '' : `<span>${esc(h.en[0])}</span>`}<i class="g tl"></i><i class="g tr"></i><i class="g bl"></i><i class="g br"></i></div>
-      <div class="hc-ribbon"><i>${esc(k.icon)}</i><span>✦ ${esc(h.title)} · ${esc(k.name)} ✦</span><i>${h.gender === 'f' ? '♀' : '♂'}</i></div>
+      <div class="hc-ribbon"><i>${esc(k.icon)}</i><span><b>✦ ${esc(h.title)}</b> · <b>${esc(k.name)} ✦</b></span><i>${h.gender === 'f' ? '♀' : '♂'}</i></div>
       <div class="hc-text">${skills}${darkInfo}${lore.quote ? `<div class="hc-div">◆</div><q>${esc(lore.quote)}</q>` : ''}</div>
       <div class="hc-foot"><span class="hc-stat hp">❤ ${h.hp}</span><span class="hc-serial">CAMELOT • ${serial}</span><span class="hc-stat fac" title="${esc(k.en)}">${esc(k.icon)}</span></div>
     </div>`;

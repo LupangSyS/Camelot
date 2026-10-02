@@ -16,4 +16,4 @@
 ## ส่งภาพจาก Gemini มาให้ Claude จัดการ
 - Prompt ทั้งหมดอยู่ใน [PROMPTS.md](PROMPTS.md) (เลข 01–74)
 - อัปโหลดภาพดิบไว้ที่ `inbox/` ตั้งชื่อเป็นเลขลำดับหรือรหัส (เช่น `01.png`, `arthur.png`) — เซิร์ฟเวอร์ไม่ใช้ไฟล์ในโฟลเดอร์นี้
-- Claude จะตัดขอบ/ลายน้ำ ย่อเป็น WEBP 1024px แล้วย้ายไปไว้ที่ `heroes/`, `dark/`, `cards/`, `threats/`
+- Claude จะตัดขอบ/ลายน้ำ ย่อเป็น WEBP 1024px แล้วย้ายไปไว้ที่ `heroes/`, `dark/`, `cards/`, `threats/` ด้วย `node scripts/import-art.js [--trim]`
