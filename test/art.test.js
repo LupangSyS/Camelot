@@ -30,7 +30,7 @@ test('saved artwork is exactly what the generator draws (tamper check)', () => {
   }
   const expected = JSON.stringify(manifestFor(a), null, 2) + '\n';
   assert.strictEqual(fs.readFileSync(path.join(ART_DIR, 'manifest.json'), 'utf8'), expected, 'manifest.json is generated');
-  const onDisk = fs.readdirSync(ART_DIR, { recursive: true }).filter((f) => f.endsWith('.png')).map((f) => f.split(path.sep).join('/'));
+  const onDisk = fs.readdirSync(ART_DIR, { recursive: true }).filter((f) => f.endsWith('.png')).map((f) => f.split(path.sep).join('/')).filter((f) => !f.startsWith('custom/'));
   assert.deepStrictEqual(onDisk.sort(), Object.keys(a).sort(), 'no extra images in public/art');
 });
 
@@ -54,4 +54,20 @@ test('art and card database are read-only over HTTP', async () => {
     for (const r of rooms.rooms.values()) rooms.destroy(r);
     await new Promise((r) => server.close(r));
   }
+});
+
+test('custom AI art in public/art/custom overrides generated art without touching it', () => {
+  const os = require('os');
+  const { mergedManifest } = require('../server/customArt');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'art-'));
+  fs.copyFileSync(path.join(ART_DIR, 'manifest.json'), path.join(tmp, 'manifest.json'));
+  fs.mkdirSync(path.join(tmp, 'custom', 'heroes'), { recursive: true });
+  fs.writeFileSync(path.join(tmp, 'custom', 'heroes', 'merlin.webp'), Buffer.from('fake-image'));
+  fs.writeFileSync(path.join(tmp, 'custom', 'heroes', 'bad name!.png'), Buffer.from('x'));
+  const m = mergedManifest(tmp);
+  assert.match(m.items['heroes/merlin'], /^custom\/heroes\/merlin\.webp\?v=[0-9a-f]{10}$/);
+  assert.ok(m.custom['heroes/merlin']);
+  assert.ok(m.items['heroes/arthur'].startsWith('heroes/arthur.png'), 'others keep generated art');
+  assert.strictEqual(Object.keys(m.custom).length, 1, 'odd file names are ignored');
+  fs.rmSync(tmp, { recursive: true, force: true });
 });

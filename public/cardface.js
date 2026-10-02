@@ -40,21 +40,39 @@
       ${head}<div class="cf-type">${esc(typeLine(info))}</div><div class="cf-text">${esc(info.short || info.desc)}</div></div>`;
   }
 
-  /** การ์ดตัวละคร: ภาพ → ชื่อ → ฝ่าย/เพศ/เลือด → ทักษะ */
+  /**
+   * การ์ดฮีโร่แบบกรอบตามขั้วอำนาจ: หัว (เลือด · ชื่อ · ความหายาก) → ภาพ → ริบบิ้น → ทักษะ + คำคม → ท้าย (เลือด · รหัส · ตราฝ่าย)
+   * @param {{pick?:boolean, cls?:string, dark?:boolean, art?:string}} [o] dark = แสดงด้านมืด, art = บังคับใช้ภาพนี้ (สตูดิโอ)
+   */
   function hero(M, artUrl, id, o = {}) {
     const h = M.heroes[id];
-    const skills = h.skills.map((s) => {
+    const lore = (M.lore && M.lore[id]) || {};
+    const dk = M.dark && M.dark[id];
+    const dark = !!(o.dark && dk);
+    const k = M.kingdoms[h.kingdom];
+    const skillIds = dark ? dk.skills : h.skills;
+    const skills = skillIds.map((s) => {
       const sk = M.skills[s];
-      return `<p><b>${esc(sk.name)}</b>${sk.lord ? ' <span class="badge host">ประมุข</span>' : ''} ${esc(sk.desc.replace(/^\((สกิลประมุข|จอมเวทแห่งอวาลอน)\)\s*/, ''))}</p>`;
+      return `<p><b>${esc(sk.name)}</b>${sk.lord ? ' <span class="hc-lord">ประมุข</span>' : ''}: ${esc(sk.desc.replace(/^\((สกิลประมุข|จอมเวทแห่งอวาลอน)\)\s*/, ''))}</p>`;
     }).join('');
     const pick = o.pick ? `pick" data-act="hero" data-id="${esc(id)}` : '';
-    const dk = M.dark && M.dark[id];
-    const dark = dk ? `<div class="cf-dark" title="เมื่อเลือดเหลือ 1 หรือนาฬิกาหายนะถึง -5 เลือกจุติด้านมืดได้ 1 ครั้ง"><b>🌑 ด้านมืด: ${esc(dk.name)}</b> <small>${esc(dk.en)}</small>${dk.skills.map((s2) => `<p><b>${esc(M.skills[s2].name)}</b> ${esc(M.skills[s2].desc)}</p>`).join('')}</div>` : '';
-    return `<div class="hcf k-${h.kingdom} ${o.cls || ''} ${pick}">
-      <div class="hcf-art"${bg(artUrl('heroes', id))}>${artUrl('heroes', id) ? '' : `<span>${esc(h.en[0])}</span>`}</div>
-      <div class="cf-name">${esc(h.name)}<small class="cf-en">${esc(h.en)} · ${esc(h.title)}</small></div>
-      <div class="cf-type">${esc(M.kingdoms[h.kingdom].icon)} ${esc(M.kingdoms[h.kingdom].name)} · ${h.gender === 'f' ? 'หญิง' : 'ชาย'} · <span class="hcf-hp">${'❤'.repeat(h.hp)}</span></div>
-      <div class="cf-text">${skills}${o.pick ? '' : dark}</div></div>`;
+    const art = o.art || (dark && artUrl('dark', id)) || artUrl('heroes', id);
+    const rar = M.rarity && M.rarity[lore.rarity || 'rare'];
+    const serial = String(Object.keys(M.heroes).indexOf(id) + 1).padStart(2, '0');
+    const name = dark ? dk.en : h.en;
+    const thName = dark ? dk.name : h.name;
+    const darkInfo = dk && !dark && !o.pick
+      ? `<div class="hc-darkside" title="เมื่อเลือดเหลือ 1 หรือนาฬิกาหายนะถึง -5 เลือกจุติด้านมืดได้ 1 ครั้ง"><b>🌑 ด้านมืด: ${esc(dk.name)}</b>${dk.skills.map((s2) => `<p><b>${esc(M.skills[s2].name)}</b>: ${esc(M.skills[s2].desc)}</p>`).join('')}</div>`
+      : '';
+    return `<div class="hcf f-${dark ? 'dark' : h.kingdom} r-${esc(lore.rarity || 'rare')} ${o.cls || ''} ${pick}">
+      <div class="hc-head"><span class="hc-hp" title="พลังชีวิต">${h.hp}</span>
+        <div class="hc-names"><b>${esc(name)}</b><small>${esc(thName)}</small></div>
+        <span class="hc-rar">${esc(rar ? rar.name : 'RARE')}</span></div>
+      <div class="hc-art"${bg(art)}>${art ? '' : `<span>${esc(h.en[0])}</span>`}<i class="g tl"></i><i class="g tr"></i><i class="g bl"></i><i class="g br"></i></div>
+      <div class="hc-ribbon"><i>${esc(k.icon)}</i><span>✦ ${esc(h.title)} · ${esc(k.name)} ✦</span><i>${h.gender === 'f' ? '♀' : '♂'}</i></div>
+      <div class="hc-text">${skills}${darkInfo}${lore.quote ? `<div class="hc-div">◆</div><q>${esc(lore.quote)}</q>` : ''}</div>
+      <div class="hc-foot"><span class="hc-stat hp">❤ ${h.hp}</span><span class="hc-serial">CAMELOT • ${serial}</span><span class="hc-stat fac" title="${esc(k.en)}">${esc(k.icon)}</span></div>
+    </div>`;
   }
 
   root.CardFace = { card, hero, typeLine, TYPE };

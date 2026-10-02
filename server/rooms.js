@@ -5,12 +5,12 @@ const { Game, ZONES, RING, WEAVES, RUNES, VOWS, SPECTRAL } = require('./game/eng
 const { FACADES, CHAOS, DECREES, THREATS, DESTINIES } = require('./game/advanced');
 const { Banter } = require('./game/banter');
 const { CARD_INFO, SUIT_SYMBOL, RANK_STR, ELEMENTS } = require('./game/cards');
-const { HEROES, SKILLS, KINGDOMS, ROLES, DARK } = require('./game/heroes');
+const { HEROES, SKILLS, KINGDOMS, ROLES, DARK, LORE, RARITY } = require('./game/heroes');
 
 const META = {
   cards: CARD_INFO, heroes: HEROES, skills: SKILLS, kingdoms: KINGDOMS, roles: ROLES, suits: SUIT_SYMBOL, ranks: RANK_STR,
   elements: ELEMENTS, zones: ZONES, ring: RING, weaves: WEAVES, runes: RUNES, vows: VOWS, spectral: SPECTRAL,
-  dark: DARK, facades: FACADES, chaos: CHAOS, decrees: DECREES, threats: THREATS, destinies: DESTINIES,
+  dark: DARK, lore: LORE, rarity: RARITY, facades: FACADES, chaos: CHAOS, decrees: DECREES, threats: THREATS, destinies: DESTINIES,
 };
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const BOT_NAMES = ['บอทเพลลินอร์', 'บอทลามอรัก', 'บอทเอคเตอร์', 'บอทอีเลน', 'บอทไลโอเนล', 'บอทดาโกเนต', 'บอทยูเธอร์', 'บอทเอนิด', 'บอทเจอเรนต์', 'บอทเพลเลียส'];

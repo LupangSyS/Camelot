@@ -302,6 +302,7 @@ function homeHTML() {
       <li>หลุดการเชื่อมต่อ? เปิดหน้าเว็บนี้อีกครั้งจากเบราว์เซอร์เดิม ระบบจะพากลับเข้าเกมอัตโนมัติ</li>
     </ul></details>
     <a class="btn ghost" href="gallery.html" style="text-align:center;text-decoration:none">🖼 คลังภาพการ์ดและฮีโร่</a>
+    <a class="btn ghost" href="studio.html" style="text-align:center;text-decoration:none">🎨 สตูดิโอภาพการ์ด AI (สร้างภาพสมจริง)</a>
   </div>`;
 }
 
