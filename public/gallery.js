@@ -63,13 +63,14 @@ function metaHTML(sl) {
 function render() {
   const { db, manifest } = S;
   const list = slots();
+  const ai = Object.keys(manifest.custom || {}).length;
   const n = Object.keys(manifest.items).length;
   document.getElementById('app').innerHTML = `<div class="gal">
     <div class="gbar2"><h1>🖼 คลังภาพ CAMELOT</h1><span class="sp"></span>
       <label class="btn sm"><input type="checkbox" id="live" ${S.live ? 'checked' : ''}> วาดใหม่สดจากโค้ดเพื่อเทียบ</label>
       <a class="btn sm gold" href="studio.html">🎨 สตูดิโอภาพ AI</a>
       <a class="btn sm" href="/">กลับไปเกม</a></div>
-    <div class="note">ภาพทั้ง ${n} ภาพความละเอียดสูง (256px) วาดจากโค้ดล้วนด้วย <code>public/artgen/</code> (ไล่สี แสงเงา แสงเรือง และลบรอยหยักแบบ supersampling ×3) และบันทึกถาวรเป็นไฟล์ใน <code>public/art/</code> พร้อมลายนิ้วมือ SHA-256 —
+    <div class="note">${ai ? `<b>✦ ภาพสมจริงจาก AI ${ai} ภาพ</b> (1024px, <code>public/art/custom/</code>) ใช้แทนภาพจากโค้ดในเกม · ` : ''}ภาพสำรองทั้ง ${n} ภาพ (256px) วาดจากโค้ดล้วนด้วย <code>public/artgen/</code> (ไล่สี แสงเงา แสงเรือง และลบรอยหยักแบบ supersampling ×3) และบันทึกถาวรเป็นไฟล์ใน <code>public/art/</code> พร้อมลายนิ้วมือ SHA-256 —
       การทดสอบจะตรวจว่าไฟล์ตรงกับตัวสร้างภาพทุกครั้ง (${esc(manifest.generator)}) —
       ภาพสมจริงจาก AI ที่วางไว้ใน <code>public/art/custom/</code> จะใช้แทนภาพจากโค้ด (มีป้าย ✦ ภาพ AI) สร้างได้ที่สตูดิโอภาพ AI</div>
     <div class="tabs">
