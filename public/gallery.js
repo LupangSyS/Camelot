@@ -26,7 +26,8 @@ const artUrl = (kind, id) => { const u = S.manifest.items[`${kind}/${id}`]; retu
 
 function faceHTML(sl) {
   if (sl.kind === 'heroes') return CardFace.hero(S.db, artUrl, sl.id);
-  if (sl.kind === 'dark' || sl.kind === 'threats') return `<img src="${esc(artUrl(sl.kind, sl.id))}" alt="${esc(sl.id)}" style="width:${sl.kind === 'dark' ? 200 : 220}px;border-radius:10px">`;
+  if (sl.kind === 'dark') return CardFace.hero(S.db, artUrl, sl.id, { dark: true });
+  if (sl.kind === 'threats') return `<img src="${esc(artUrl(sl.kind, sl.id))}" alt="${esc(sl.id)}" style="width:220px;border-radius:10px">`;
   if (sl.kind === 'cards') {
     const first = (S.db.deck[sl.id] || [])[0] || {};
     return CardFace.card(S.db, artUrl, { key: sl.id, suit: first.suit, rank: first.rank });
@@ -66,9 +67,11 @@ function render() {
   document.getElementById('app').innerHTML = `<div class="gal">
     <div class="gbar2"><h1>🖼 คลังภาพ CAMELOT</h1><span class="sp"></span>
       <label class="btn sm"><input type="checkbox" id="live" ${S.live ? 'checked' : ''}> วาดใหม่สดจากโค้ดเพื่อเทียบ</label>
+      <a class="btn sm gold" href="studio.html">🎨 สตูดิโอภาพ AI</a>
       <a class="btn sm" href="/">กลับไปเกม</a></div>
     <div class="note">ภาพทั้ง ${n} ภาพความละเอียดสูง (256px) วาดจากโค้ดล้วนด้วย <code>public/artgen/</code> (ไล่สี แสงเงา แสงเรือง และลบรอยหยักแบบ supersampling ×3) และบันทึกถาวรเป็นไฟล์ใน <code>public/art/</code> พร้อมลายนิ้วมือ SHA-256 —
-      ภาพเป็นไฟล์คงที่ ไม่มีระบบแก้ไขหรืออัปโหลด และการทดสอบจะตรวจว่าไฟล์ตรงกับตัวสร้างภาพทุกครั้ง (${esc(manifest.generator)})</div>
+      การทดสอบจะตรวจว่าไฟล์ตรงกับตัวสร้างภาพทุกครั้ง (${esc(manifest.generator)}) —
+      ภาพสมจริงจาก AI ที่วางไว้ใน <code>public/art/custom/</code> จะใช้แทนภาพจากโค้ด (มีป้าย ✦ ภาพ AI) สร้างได้ที่สตูดิโอภาพ AI</div>
     <div class="tabs">
       <button class="btn sm ${S.tab === 'heroes' ? 'on' : ''}" data-tab="heroes">ฮีโร่ (${Object.keys(db.heroes).length})</button>
       <button class="btn sm ${S.tab === 'cards' ? 'on' : ''}" data-tab="cards">การ์ด (${Object.keys(db.cards).length})</button>
@@ -79,12 +82,13 @@ function render() {
       const key = `${sl.kind}/${sl.id}`;
       const url = manifest.items[key];
       const cls = sl.kind === 'heroes' || sl.kind === 'dark' ? 'hero-it' : sl.id === 'felt' ? 'felt-it' : sl.id === 'table' ? 'table-it' : 'card-it';
-      const chk = S.checks[key];
+      const ai = !!(manifest.custom || {})[key];
+      const chk = ai ? null : S.checks[key];
       return `<div class="item ${cls}">
         <div class="pics">${faceHTML(sl)}${url ? `<img hidden src="art/${esc(url)}" alt="" data-key="${esc(key)}">` : ''}${S.live ? `<canvas data-live="${esc(key)}" title="วาดใหม่สดในเบราว์เซอร์"></canvas>` : ''}</div>
-        <div class="meta">${metaHTML(sl)}
+        <div class="meta">${ai ? '<span class="ai-badge">✦ ภาพ AI</span>' : ''}${metaHTML(sl)}
           <div class="hash">sha256 ${esc((manifest.sha256[`${key}.png`] || '').slice(0, 16))}…</div>
-          ${S.live ? `<div class="small ${chk === true ? 'ok' : chk === false ? 'bad' : ''}">${chk === true ? '✓ วาดใหม่ได้ตรงกับไฟล์ทุกพิกเซล' : chk === false ? '✗ ไม่ตรง (อาจเกิดจากเบราว์เซอร์คำนวณต่างเล็กน้อย)' : 'กำลังตรวจ…'}</div>` : ''}
+          ${S.live && !ai ? `<div class="small ${chk === true ? 'ok' : chk === false ? 'bad' : ''}">${chk === true ? '✓ วาดใหม่ได้ตรงกับไฟล์ทุกพิกเซล' : chk === false ? '✗ ไม่ตรง (อาจเกิดจากเบราว์เซอร์คำนวณต่างเล็กน้อย)' : 'กำลังตรวจ…'}</div>` : ''}
         </div></div>`;
     }).join('')}</div></div>`;
   if (S.live) requestAnimationFrame(drawLive);
@@ -100,7 +104,7 @@ function drawLive() {
     const ctx = cv.getContext('2d');
     ctx.putImageData(new ImageData(new Uint8ClampedArray(img.d), img.w, img.h), 0, 0);
     const saved = document.querySelector(`img[data-key="${key}"]`);
-    if (saved && S.checks[key] === undefined) compare(key, saved, img);
+    if (saved && !(S.manifest.custom || {})[key] && S.checks[key] === undefined) compare(key, saved, img);
   }
 }
 

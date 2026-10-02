@@ -65,7 +65,11 @@ function main() {
     console.log(`✓ ภาพทั้ง ${Object.keys(files).length} ไฟล์ตรงกับตัวสร้างภาพ`);
     return;
   }
-  fs.rmSync(ART_DIR, { recursive: true, force: true });
+  // ลบเฉพาะภาพที่สร้างจากโค้ด — เก็บโฟลเดอร์ custom (ภาพ AI ที่ผู้ดูแลใส่เอง) ไว้เสมอ
+  for (const name of fs.existsSync(ART_DIR) ? fs.readdirSync(ART_DIR) : []) {
+    if (name === 'custom') continue;
+    fs.rmSync(path.join(ART_DIR, name), { recursive: true, force: true });
+  }
   for (const [rel, buf] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(ART_DIR, rel)), { recursive: true });
     fs.writeFileSync(path.join(ART_DIR, rel), buf);

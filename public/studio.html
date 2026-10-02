@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0c18">
+  <title>สตูดิโอภาพการ์ด · CAMELOT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Cinzel:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .studio { max-width: 1200px; margin: 0 auto; padding: 14px 16px 40px; display: grid; gap: 14px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .studio { grid-template-columns: minmax(0, 1.25fr) minmax(300px, .9fr); align-items: start; } }
+    .st-bar { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .st-bar h1 { margin: 0; font-family: 'Cinzel', serif; font-size: 22px; color: var(--gold); }
+    .st-bar .sp { flex: 1; }
+    .st-panel { background: rgba(23, 28, 52, .92); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+    .st-panel h2 { margin: 0; font-size: 15px; font-family: 'Cinzel', serif; color: #ffd27a; display: flex; gap: 8px; align-items: center; }
+    .st-panel h2 small { margin-left: auto; font-family: 'Sarabun', sans-serif; font-size: 11px; color: var(--muted); font-weight: 400; }
+    .grid2 { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+    label.f { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+    select, textarea, input[type=password], input[type=number] {
+      background: #0e1122; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%;
+    }
+    textarea { min-height: 110px; resize: vertical; line-height: 1.45; font-size: 13px; }
+    .btn.gen { background: linear-gradient(90deg, #f0a020, #e03a4a); border-color: #ffb050; color: #1a0a04; font-weight: 800; }
+    .btn.save { background: linear-gradient(90deg, #1aa86a, #12865a); border-color: #4ae0a0; font-weight: 700; }
+    .st-note { font-size: 12px; color: var(--muted); line-height: 1.55; }
+    .st-note code { background: #0e1122; padding: 1px 5px; border-radius: 4px; color: #cfe0ff; }
+    .st-status { font-size: 13px; min-height: 18px; }
+    .st-status.err { color: #ffb4a8; } .st-status.ok { color: #9be3ae; }
+    .preview { display: grid; justify-items: center; gap: 10px; }
+    .preview .hcf { width: min(100%, 340px); }
+    .preview .card { transform: scale(1.6); transform-origin: top center; margin-bottom: 120px; }
+    .st-bar a.btn, .st-panel label.btn { text-decoration: none; color: var(--text); cursor: pointer; }
+    input[type=text] { background: #0e1122; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%; }
+    .raw { max-height: 360px; object-fit: contain; width: 100%; border-radius: 10px; border: 1px solid var(--line); background: #000; }
+    .slots { display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px; overflow: auto; }
+    .slots button { font-size: 11px; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--line); background: var(--bg2); }
+    .slots button.has { border-color: #4ae0a0; color: #b8ffd8; }
+    .slots button.on { background: #3a4478; border-color: var(--gold); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .chk { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="app"><div class="loading">กำลังโหลด…</div></div>
+  <script src="cardface.js"></script>
+  <script src="studio.js"></script>
+</body>
+</html>

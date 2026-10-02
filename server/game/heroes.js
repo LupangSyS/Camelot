@@ -140,4 +140,40 @@ const DARK = {
   questing_beast: { name: 'อสูรหิวกระหาย', en: 'The Ravenous Chimera', skills: ['rend', 'vampiric'] },
 };
 
-module.exports = { KINGDOMS, ROLES, SKILLS, HEROES, LORD_HEROES, DARK };
+// ── ตำนานประจำการ์ด: ความหายาก, คำคม และคำบรรยายรูปลักษณ์ (ใช้สร้าง prompt ภาพ AI ในสตูดิโอ) ──
+const LORE = {
+  arthur: { rarity: 'mythic', quote: 'ดาบเล่มนี้มิได้เลือกผู้แข็งแกร่งที่สุด แต่เลือกผู้ที่พร้อมแบกรับคาเมลอตทั้งแผ่นดิน', look: 'King Arthur, regal middle-aged king with short brown beard and golden crown, gleaming gold-and-royal-blue plate armor, crimson cape, holding the glowing holy sword Excalibur, Camelot castle at golden dusk behind him' },
+  lancelot: { rarity: 'legendary', quote: 'คมดาบของข้าไม่เคยพลาดเป้า มีเพียงหัวใจเท่านั้นที่หลงทาง', look: 'Sir Lancelot, handsome dark-haired knight, polished silver plate armor with deep blue trim, flowing navy cape, dual swords, misty moonlit lake behind him' },
+  gawain: { rarity: 'epic', quote: 'ตราบใดที่ตะวันยังส่อง ดาบของข้าไม่มีวันอ่อนแรง', look: 'Sir Gawain, blond bearded knight in radiant golden sun-engraved armor, orange cape, blazing sun halo behind his head, sword raised at sunrise' },
+  bedivere: { rarity: 'rare', quote: 'มือข้างนี้อาจเป็นเงิน แต่ความภักดีของข้าแท้ยิ่งกว่าทองคำ', look: 'Sir Bedivere, grey-bearded veteran knight with a gleaming arcane silver prosthetic hand inscribed with glowing runes, steel armor with blue trim, castle battlements behind' },
+  kay: { rarity: 'rare', quote: 'กองทัพเดินด้วยท้อง และราชสำนักอยู่รอดด้วยเสบียงของข้า', look: 'Sir Kay, stern seneschal with receding hair and a mustache, rich crimson tunic with gold trim, ring of brass keys at his belt, torch-lit great hall with banners' },
+  gareth: { rarity: 'rare', quote: 'ข้าจะยืนขวางหน้าทุกคมดาบ เพื่อให้สหายได้กลับบ้าน', look: 'Sir Gareth, young golden-haired knight in white plate armor with blue accents, kite shield bearing a star, sunlit meadow behind' },
+  guinevere: { rarity: 'legendary', quote: 'มงกุฎหนักกว่าที่ใครคิด แต่ข้าไม่เคยก้มหัว', look: 'Queen Guinevere, beautiful auburn-haired queen with a golden tiara, emerald and gold gown, holding a red rose, castle balcony at sunset' },
+  mordred: { rarity: 'mythic', quote: 'บัลลังก์นี้ควรเป็นของข้าตั้งแต่ต้น และข้าจะทวงคืนด้วยเปลวเพลิง', look: 'Mordred the usurper prince, menacing knight in spiked black-and-crimson plate armor with a horned helm, wielding a jagged greatsword dripping glowing purple venom, burning castle under a stormy sky' },
+  morgan: { rarity: 'mythic', quote: 'มายาภาพคือความจริงที่เจ้ายังไม่พร้อมจะมองเห็น', look: 'Morgan le Fay, pale raven-haired sorceress with a silver circlet set with a violet gem, dark purple robes, holding a glowing violet orb, eclipsed moon and starry night sky' },
+  agravain: { rarity: 'rare', quote: 'ความลับทุกอย่างมีราคา และข้าคือผู้เก็บเงิน', look: 'Sir Agravain, sly hooded knight in dark green leather, thin mustache, hidden dagger, shadowy stormy courtyard' },
+  black_knight: { rarity: 'epic', quote: 'ไม่มีใครเห็นใบหน้าข้า และไม่มีใครรอดไปเล่าขาน', look: 'The Black Knight, towering warrior in pitch-black full plate with a great helm whose visor glows red, massive dark greatsword, lightning storm behind' },
+  lot: { rarity: 'epic', quote: 'ออร์กนีย์ไม่เคยลืม และไม่เคยให้อภัย', look: 'King Lot of Orkney, old king with long grey beard and iron crown, heavy fur cloak, snowy northern mountains' },
+  balin: { rarity: 'epic', quote: 'ดาบสองเล่ม ชะตาเดียว — ความตาย', look: 'Sir Balin, wild red-haired bearded knight in chainmail with two crossed swords on his back, dark forest' },
+  morgause: { rarity: 'legendary', quote: 'ข้าทอเส้นด้ายแห่งชะตา และเส้นของเจ้าใกล้ขาดแล้ว', look: 'Morgause, crimson-haired witch queen with a dark veil, blood-red gown, spinning glowing threads of fate, eclipse sky' },
+  merlin: { rarity: 'mythic', quote: 'ข้าเห็นจุดจบของโลกนี้มาแล้วนับพันครั้ง และนี่คือจุดเริ่มต้นใหม่', look: 'Merlin the archmage, ancient wizard with a long silver beard, deep starlight-blue robes inscribed with gold constellations, gnarled oak staff crowned with a floating cosmic orb, mystical rune-lit ruins' },
+  nimue: { rarity: 'legendary', quote: 'ทะเลสาบให้กำเนิดดาบ และทะเลสาบก็ทวงคืนได้เช่นกัน', look: 'Nimue the Lady of the Lake, ethereal woman with flowing silver-blue hair and a pearl circlet, aqua gown, holding a sphere of water, misty lake under moonlight' },
+  viviane: { rarity: 'epic', quote: 'ในม่านหมอก ทุกเส้นทางคือเส้นทางกลับสู่อวาลอน', look: 'Lady Viviane, serene white-haired high priestess in a pale hooded robe, holding a glowing lotus, mist-shrouded sacred grove' },
+  tristan: { rarity: 'rare', quote: 'บทเพลงของข้าแหลมคมพอๆ กับลูกธนู', look: 'Sir Tristan, brown-haired archer knight in green leather, longbow on his back, small harp, sea cliffs at sunset' },
+  isolde: { rarity: 'epic', quote: 'ยาเสน่ห์หยดเดียว ผูกพันสองดวงใจไปชั่วนิรันดร์', look: 'Princess Isolde, golden-haired princess with a long braid and a jeweled circlet, white gown, holding a glowing pink love potion vial, seaside castle' },
+  taliesin: { rarity: 'rare', quote: 'วีรบุรุษตายได้ แต่บทเพลงของพวกเขาไม่มีวันตาย', look: 'Taliesin the bard, curly-haired bearded bard in a green cloak, golden harp with glowing musical notes, enchanted forest' },
+  galahad: { rarity: 'mythic', quote: 'ใจที่บริสุทธิ์คือเกราะที่ไม่มีวันแตก', look: 'Sir Galahad, young angelic knight with golden hair and a radiant halo, white-and-gold armor, holding the glowing Holy Grail, beams of heavenly light' },
+  percival: { rarity: 'epic', quote: 'ข้าไม่รู้ทางไปจอกศักดิ์สิทธิ์ แต่ข้ารู้ว่าต้องไม่หยุดเดิน', look: 'Sir Percival, earnest young knight in a white tunic with a red cross over mail, holding a spear, dawn-lit meadow' },
+  bors: { rarity: 'rare', quote: 'ความอดทนคือดาบที่คมที่สุด', look: 'Sir Bors, bald bearded ascetic knight in a brown monk robe over chainmail, prayer beads, stained-glass chapel' },
+  green_knight: { rarity: 'legendary', quote: 'ฟันคอข้าได้ แต่อีกหนึ่งปี ข้าจะมาทวงคืน', look: 'The Green Knight, gigantic green-skinned warrior with a wild green beard and a holly crown, green armor, giant battle axe, primeval forest' },
+  questing_beast: { rarity: 'mythic', quote: '(เสียงเห่าหอนนับร้อยดังก้องจากท้องของมัน)', look: 'The Questing Beast, monstrous chimera with a serpent head and long scaled neck, leopard-spotted body, lion haunches, glowing red eyes, roaring in a dark abyssal forest' },
+};
+
+const RARITY = {
+  mythic: { name: 'MYTHIC', th: 'ตำนานเทพ' },
+  legendary: { name: 'LEGENDARY', th: 'ตำนาน' },
+  epic: { name: 'EPIC', th: 'มหากาพย์' },
+  rare: { name: 'RARE', th: 'หายาก' },
+};
+
+module.exports = { KINGDOMS, ROLES, SKILLS, HEROES, LORD_HEROES, DARK, LORE, RARITY };
