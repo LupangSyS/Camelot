@@ -536,7 +536,8 @@ input[type=text]:focus { outline: 2px solid var(--gold); outline-offset: -1px; }
 .hc-art .g { position: absolute; width: 7px; height: 7px; background: var(--fc); transform: rotate(45deg); box-shadow: 0 0 6px var(--fc); opacity: .9; }
 .hc-art .g.tl { left: 6px; top: 6px; } .hc-art .g.tr { right: 6px; top: 6px; } .hc-art .g.bl { left: 6px; bottom: 6px; } .hc-art .g.br { right: 6px; bottom: 6px; }
 .hc-ribbon { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 10.5px; font-weight: 700; color: var(--ftx); }
-.hc-ribbon span { flex: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-ribbon span { flex: 1; min-width: 0; text-align: center; line-height: 1.3; text-wrap: balance; overflow-wrap: anywhere; }
+.hc-ribbon span b { font-weight: inherit; display: inline-block; }
 .hc-ribbon i { font-style: normal; opacity: .8; }
 .hc-text { padding: 6px 9px; display: grid; gap: 3px; }
 .hc-text p { margin: 0; line-height: 1.45; font-size: 11.5px; color: #ece4d4; }
